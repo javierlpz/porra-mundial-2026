@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Perfil · Porra Mundial 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700;900&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #07090f; --surface: #0f1320; --card: #141929;
+      --border: rgba(255,255,255,.07); --gold: #f0b429; --gold2: #ffd76e;
+      --green: #22c55e; --blue: #3b82f6; --red: #ef4444; --text: #f1f5f9;
+      --muted: #64748b; --silver: #94a3b8; --bronze: #d97706; --radius: 14px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: "Outfit", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ——— Nav ——— */
+    nav {
+      position: sticky; top: 0; z-index: 100; display: flex;
+      align-items: center; justify-content: space-between;
+      padding: 0 24px; height: 64px;
+      background: rgba(7,9,15,.85); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { font-family: "Bebas Neue", cursive; font-size: 1.4rem; letter-spacing: .08em; color: var(--gold); }
+    .nav-logo span { color: var(--text); }
+    .nav-links { display: flex; gap: 6px; }
+    .nav-links a { text-decoration: none; color: var(--silver); font-size: .875rem; font-weight: 500; padding: 7px 14px; border-radius: 8px; transition: all .2s; }
+    .nav-links a:hover { color: var(--text); background: rgba(255,255,255,.06); }
+    .hamburger { display: none; background: none; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; cursor: pointer; color: var(--silver); font-size: 1.1rem; font-family: inherit; line-height: 1; transition: all .2s; }
+
+    /* ——— Page ——— */
+    .page-header {
+      padding: 48px 24px 36px; max-width: 900px; margin: 0 auto;
+      display: flex; align-items: flex-end; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap;
+    }
+    .profile-left { display: flex; align-items: center; gap: 18px; }
+    .profile-avatar {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold), #d97706);
+      display: flex; align-items: center; justify-content: center;
+      font-family: "Bebas Neue", cursive; font-size: 2rem;
+      color: #0a0c10; flex-shrink: 0;
+      border: 3px solid rgba(240,180,41,.3);
+    }
+    .profile-name { font-family: "Bebas Neue", cursive; font-size: 2.4rem; letter-spacing: .04em; line-height: 1; margin-bottom: 4px; }
+    .profile-pos { font-size: .88rem; color: var(--silver); }
+    .back-link { text-decoration: none; color: var(--silver); font-size: .82rem; font-weight: 500; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border); transition: all .2s; white-space: nowrap; }
+    .back-link:hover { border-color: rgba(240,180,41,.4); color: var(--gold); }
+
+    /* ——— Sections ——— */
+    .content { max-width: 900px; margin: 0 auto; padding: 0 24px 60px; }
+    .section { margin-bottom: 36px; }
+    .section-title { font-family: "Bebas Neue", cursive; font-size: 1.5rem; letter-spacing: .06em; margin-bottom: 16px; }
+
+    /* ——— Stats strip ——— */
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; text-align: center; }
+    .stat-card.gold { border-color: rgba(240,180,41,.3); }
+    .stat-card.green { border-color: rgba(34,197,94,.25); }
+    .stat-val { font-family: "Bebas Neue", cursive; font-size: 2.2rem; line-height: 1; margin-bottom: 4px; }
+    .stat-card.gold .stat-val { color: var(--gold); }
+    .stat-card.green .stat-val { color: var(--green); }
+    .stat-lbl { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    .pts-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
+    .pts-pill { font-size: .8rem; color: var(--silver); background: rgba(255,255,255,.05); border: 1px solid var(--border); border-radius: 100px; padding: 5px 13px; }
+    .pts-pill strong { color: var(--text); }
+
+    /* ——— Achievements ——— */
+    .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+    .ach-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 16px;
+      display: flex; gap: 12px; align-items: flex-start; transition: transform .2s;
+    }
+    .ach-card.unlocked { border-color: rgba(240,180,41,.2); background: linear-gradient(135deg, rgba(240,180,41,.05) 0%, var(--card) 100%); }
+    .ach-card.locked { opacity: .35; filter: grayscale(60%); }
+    .ach-card.unlocked:hover { transform: translateY(-2px); }
+    .ach-icon { font-size: 1.6rem; flex-shrink: 0; }
+    .ach-name { font-weight: 700; font-size: .85rem; margin-bottom: 3px; }
+    .ach-desc { font-size: .74rem; color: var(--muted); line-height: 1.45; }
+
+    /* ——— Chart ——— */
+    .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 28px; }
+    .chart-card-title { font-weight: 700; font-size: .88rem; margin-bottom: 14px; }
+    .chart-empty { text-align: center; padding: 28px; color: var(--muted); font-size: .88rem; }
+
+    /* ——— Pick loco ——— */
+    .pick-loco-card {
+      background: var(--card); border: 1px solid rgba(239,68,68,.2);
+      border-radius: var(--radius); padding: 18px 20px; margin-bottom: 28px;
+      background: linear-gradient(135deg, rgba(239,68,68,.04) 0%, var(--card) 100%);
+    }
+    .pick-loco-label { font-size: .72rem; color: var(--red); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+    .pick-loco-match { font-weight: 700; font-size: 1rem; margin-bottom: 4px; }
+    .pick-loco-detail { font-size: .85rem; color: var(--silver); }
+
+    /* ——— History table ——— */
+    .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .hist-table { width: 100%; border-collapse: collapse; }
+    .hist-table thead th { padding: 9px 14px; text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--surface); border-bottom: 1px solid var(--border); }
+    .hist-table tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+    .hist-table tbody tr:last-child { border-bottom: none; }
+    .hist-table tbody tr:hover { background: rgba(255,255,255,.025); }
+    .hist-table td { padding: 11px 14px; font-size: .85rem; vertical-align: middle; }
+    .hist-match { font-weight: 600; }
+    .hist-scores { font-family: "Bebas Neue", cursive; font-size: 1rem; }
+    .hist-badge { font-size: .7rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; white-space: nowrap; }
+    .hist-badge.exact { background: rgba(34,197,94,.15); color: var(--green); }
+    .hist-badge.winner { background: rgba(59,130,246,.12); color: #7dd3fc; }
+    .hist-badge.miss { background: rgba(239,68,68,.1); color: var(--red); }
+
+    /* ——— Empty / Loading ——— */
+    .loading-msg { text-align: center; padding: 64px 24px; color: var(--muted); font-size: .9rem; }
+    .error-msg { text-align: center; padding: 48px; color: var(--red); font-size: .9rem; }
+
+    @media (max-width: 640px) {
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      nav { padding: 0 14px; }
+      .page-header { padding: 32px 16px 24px; }
+    }
+
+      /* ——— Nav user ——— */
+      .nav-user-name { font-size: .875rem; font-weight: 600; color: var(--gold); text-decoration: none; }
+      .nav-user-name:hover { text-decoration: underline; }
+      .nav-logout {
+        background: none; border: 1px solid var(--border); border-radius: 8px;
+        padding: 5px 12px; color: var(--muted); cursor: pointer;
+        font-family: inherit; font-size: .8rem; transition: all .2s;
+      
+        .hamburger { display: block; }
+        .nav-user  { display: none !important; }
+        .nav-links {
+          display: none; position: fixed; top: 64px; left: 0; right: 0;
+          background: rgba(7,9,15,.97); backdrop-filter: blur(16px);
+          flex-direction: column; padding: 12px;
+          border-bottom: 1px solid var(--border); z-index: 99; gap: 0;
+        }
+        .nav-links.mobile-open { display: flex; }
+        .nav-links a { padding: 10px 14px; font-size: .9rem; width: 100%; border-radius: 8px; }
+        #mobileUserRow { display: flex; }
+      }
+      .nav-logout:hover { border-color: var(--red); color: var(--red); }
+      /* ——— Hamburguesa ——— */
+      .hamburger {
+        display: none; background: none; border: 1px solid var(--border);
+        border-radius: 8px; padding: 6px 10px; cursor: pointer;
+        color: var(--silver); font-size: 1.1rem; font-family: inherit;
+        line-height: 1; transition: all .2s; flex-shrink: 0;
+      }
+      .hamburger:hover { border-color: rgba(255,255,255,.2); color: var(--text); }
+      /* ——— Mobile user row (inside hamburger menu) ——— */
+      #mobileUserRow {
+        display: none;
+        border-top: 1px solid rgba(255,255,255,.07);
+        margin-top: 6px; padding: 10px 14px 4px;
+        align-items: center; justify-content: space-between; gap: 8px;
+      }
+      #mobileUserRow .mu-name { font-size: .9rem; font-weight: 600; color: var(--gold); }
+      #mobileUserRow .mu-logout {
+        background: none; border: 1px solid rgba(239,68,68,.3);
+        border-radius: 8px; padding: 5px 10px; color: var(--red);
+        font-family: inherit; font-size: .78rem; cursor: pointer;
+      }
+
+      /* ——— Hamburguesa mobile rules ——— */
+      @media (max-width: 640px) {
+        .hamburger  { display: block !important; }
+        .nav-user   { display: none !important; }
+        #navCta     { display: none !important; }
+        .nav-links  {
+          display: none !important;
+          position: fixed; top: 64px; left: 0; right: 0;
+          background: rgba(7,9,15,.97);
+          backdrop-filter: blur(16px);
+          flex-direction: column !important;
+          padding: 12px;
+          border-bottom: 1px solid rgba(255,255,255,.07);
+          z-index: 99;
+          gap: 0 !important;
+        }
+        .nav-links.mobile-open { display: flex !important; }
+        .nav-links a { padding: 10px 14px !important; font-size: .9rem !important; width: 100%; border-radius: 8px; }
+        #mobileUserRow { display: flex !important; }
+      }
+      @media (max-width: 600px) {
+        .hamburger  { display: block !important; }
+        .nav-user   { display: none !important; }
+        .nav-links  {
+          display: none !important;
+          position: fixed; top: 64px; left: 0; right: 0;
+          background: rgba(7,9,15,.97);
+          backdrop-filter: blur(16px);
+          flex-direction: column !important;
+          padding: 12px;
+          border-bottom: 1px solid rgba(255,255,255,.07);
+          z-index: 99;
+          gap: 0 !important;
+        }
+        .nav-links.mobile-open { display: flex !important; }
+        .nav-links a { padding: 10px 14px !important; font-size: .9rem !important; width: 100%; border-radius: 8px; }
+        #mobileUserRow { display: flex !important; }
+      }
+  </style>
+</head>
+<body>
+
+  <nav>
+
+    <a href="index.html" style="text-decoration:none"><div class="nav-logo">⚽ PORRA <span>2026</span></div></a>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html">Ranking</a>
+      <a href="mis-picks.html">Mis Apuestas</a>
+      <a href="bracket.html">Cuadro</a>
+      <a href="reglas.html">Reglas</a>
+    </div>
+      <div class="nav-user" id="navUser" style="display:none">
+        <a href="#" id="navUserName" class="nav-user-name"></a>
+        <button class="nav-logout" onclick="doLogout()">Salir</button>
+      </div>
+      <button class="hamburger" id="hamburger" onclick="toggleMenu()" aria-label="Menú">☰</button>
+  </nav>
+
+  <div id="loadingView" class="loading-msg">⏳ Cargando perfil…</div>
+  <div id="errorView" class="error-msg" style="display:none">❌ No se pudo cargar el perfil.</div>
+
+  <div id="profileView" style="display:none">
+
+    <div class="page-header">
+      <div class="profile-left">
+        <div class="profile-avatar" id="profileAvatar">?</div>
+        <div>
+          <div class="profile-name" id="profileName">—</div>
+          <div class="profile-pos" id="profilePos">—</div>
+        </div>
+      </div>
+      <a href="index.html" class="back-link">← Volver al ranking</a>
+    </div>
+
+    <div class="content">
+
+      <!-- Estadísticas -->
+      <div class="section">
+        <div class="section-title">📊 Estadísticas</div>
+        <div class="stats-row">
+          <div class="stat-card gold"><div class="stat-val" id="sTotalPts">—</div><div class="stat-lbl">Puntos totales</div></div>
+          <div class="stat-card"><div class="stat-val" id="sPctExacto">—</div><div class="stat-lbl">% exactos</div></div>
+          <div class="stat-card green"><div class="stat-val" id="sRacha">—</div><div class="stat-lbl">Racha actual</div></div>
+        </div>
+        <div class="pts-pills" id="ptsPills"></div>
+      </div>
+
+      <!-- Logros -->
+      <div class="section">
+        <div class="section-title">🏅 Logros</div>
+        <div class="ach-grid" id="achGrid">
+          <div style="color:var(--muted);font-size:.88rem">Cargando logros…</div>
+        </div>
+      </div>
+
+      <!-- Evolución -->
+      <div class="chart-card">
+        <div class="chart-card-title">📈 Evolución en el ranking</div>
+        <div id="chartEmpty" class="chart-empty" style="display:none">El gráfico se irá llenando conforme avance el torneo ⏳</div>
+        <div style="position:relative;height:220px" id="chartWrap"><canvas id="profileChart"></canvas></div>
+      </div>
+
+      <!-- Pick más loco -->
+      <div class="pick-loco-card" id="locoCard" style="display:none">
+        <div class="pick-loco-label">🤪 El pick más optimista</div>
+        <div class="pick-loco-match" id="locoMatch">—</div>
+        <div class="pick-loco-detail" id="locoDetail">—</div>
+      </div>
+
+      <!-- Historial -->
+      <div class="section">
+        <div class="section-title">📋 Historial reciente</div>
+        <div class="table-wrap">
+          <table class="hist-table">
+            <thead><tr><th>Partido</th><th>Tu pick</th><th>Resultado</th><th></th></tr></thead>
+            <tbody id="histBody"><tr><td colspan="4" style="text-align:center;padding:28px;color:var(--muted)">—</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // =========================================================
+    const SCRIPT_URL = "TU_WEBAPP_URL_AQUI";
+    // =========================================================
+
+    let chartInstance = null;
+
+    function escHtml(s) {
+      if (!s) return '';
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function fmt(iso) {
+      if (!iso) return '';
+      return new Date(iso).toLocaleDateString('es-ES',{day:'2-digit',month:'short'});
+    }
+    async function api(params) {
+      const res = await fetch(SCRIPT_URL + '?' + new URLSearchParams(params));
+      return res.json();
+    }
+
+    const pid = new URLSearchParams(window.location.search).get('pid');
+
+    async function loadAll() {
+      if (!pid) { show('error'); return; }
+      try {
+        const [pr, ar, hr] = await Promise.all([
+          api({ action:'getProfile',      pid }),
+          api({ action:'getAchievements', pid }),
+          api({ action:'getHistory',      pid })
+        ]);
+        renderProfile(pr);
+        renderAchievements(ar.achievements || []);
+        renderChart(hr.history || []);
+        show('profile');
+      } catch(e) {
+        console.warn(e);
+        show('error');
+      }
+    }
+
+    function show(view) {
+      document.getElementById('loadingView').style.display = 'none';
+      document.getElementById('errorView').style.display   = view==='error'   ? 'block' : 'none';
+      document.getElementById('profileView').style.display = view==='profile' ? 'block' : 'none';
+    }
+
+    function renderProfile(d) {
+      const init = (d.nombre||'?')[0].toUpperCase();
+      document.getElementById('profileAvatar').textContent = init;
+      document.getElementById('profileName').textContent   = d.nombre || '—';
+      document.getElementById('profilePos').textContent    = `#${d.pos||'—'} · ${d.total||0} puntos`;
+      document.title = (d.nombre || '?') + ' · Porra Mundial 2026';
+
+      document.getElementById('sTotalPts').textContent  = d.total || 0;
+      document.getElementById('sPctExacto').textContent = (d.stats?.pctExacto ?? '—') + '%';
+      document.getElementById('sRacha').textContent     = d.stats?.rachaActual ?? '—';
+
+      document.getElementById('ptsPills').innerHTML = [
+        `Grupos: <strong>${d.pts_grupos||0}</strong>`,
+        `Eliminatorias: <strong>${d.pts_elim||0}</strong>`,
+        `Especiales: <strong>${d.pts_spec||0}</strong>`,
+        `Acierto ganador: <strong>${d.stats?.pctGanador??'—'}%</strong>`,
+        `Mejor racha: <strong>${d.stats?.mejorRacha||0}</strong>`,
+        `Picks realizados: <strong>${d.stats?.totalPreds||0}</strong>`
+      ].map(t=>`<div class="pts-pill">${t}</div>`).join('');
+
+      if (d.pickLoco) {
+        document.getElementById('locoCard').style.display   = 'block';
+        document.getElementById('locoMatch').textContent    = `${d.pickLoco.local} vs ${d.pickLoco.visitante}`;
+        document.getElementById('locoDetail').textContent   = `Predijo: ${d.pickLoco.predL}–${d.pickLoco.predV} · Real: ${d.pickLoco.realL}–${d.pickLoco.realV} · Error de ${Math.abs(d.pickLoco.predL-d.pickLoco.realL)+Math.abs(d.pickLoco.predV-d.pickLoco.realV)} goles`;
+      }
+
+      const tbody = document.getElementById('histBody');
+      const hist  = d.historial || [];
+      if (!hist.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:28px;color:var(--muted)">Aún no hay partidos finalizados</td></tr>';
+        return;
+      }
+      tbody.innerHTML = hist.map(h => {
+        const badge = h.result==='exact'
+          ? '<span class="hist-badge exact">✅ Exacto</span>'
+          : h.result==='winner'
+          ? '<span class="hist-badge winner">👍 Ganador</span>'
+          : '<span class="hist-badge miss">❌ Miss</span>';
+        return `<tr>
+          <td class="hist-match">${escHtml(h.local)} vs ${escHtml(h.visitante)} <span style="font-size:.72rem;color:var(--muted)">${fmt(h.kickoff)}</span></td>
+          <td class="hist-scores">${h.predL} – ${h.predV}</td>
+          <td class="hist-scores" style="color:var(--muted)">${h.realL} – ${h.realV}</td>
+          <td>${badge}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function renderAchievements(achievements) {
+      const grid = document.getElementById('achGrid');
+      if (!achievements.length) {
+        grid.innerHTML = '<div style="color:var(--muted);font-size:.88rem">Aún no hay logros. ¡Empieza a acertar!</div>';
+        return;
+      }
+      grid.innerHTML = achievements.map(a => `
+        <div class="ach-card ${a.locked ? 'locked' : 'unlocked'}">
+          <div class="ach-icon">${a.icon}</div>
+          <div>
+            <div class="ach-name">${escHtml(a.name)}</div>
+            <div class="ach-desc">${escHtml(a.desc)}</div>
+          </div>
+        </div>`
+      ).join('');
+    }
+
+    function renderChart(history) {
+      if (history.length < 2) {
+        document.getElementById('chartEmpty').style.display = 'block';
+        document.getElementById('chartWrap').style.display  = 'none';
+        return;
+      }
+      const labels = history.map(h => new Date(h.timestamp||h.ts||'').toLocaleDateString('es-ES',{day:'2-digit',month:'short'}));
+      const data   = history.map(h => h.posicion || h.pos);
+      const ctx = document.getElementById('profileChart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Posición', data,
+            borderColor: '#f0b429',
+            backgroundColor: 'rgba(240,180,41,.07)',
+            tension: 0.4, fill: true, pointRadius: 4,
+            pointHoverRadius: 6, pointBackgroundColor: '#f0b429'
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          scales: {
+            y: { reverse: true, min: 1, ticks: { stepSize: 1, color: '#64748b', callback: v=>'#'+v }, grid: { color: 'rgba(255,255,255,.05)' } },
+            x: { ticks: { color: '#64748b', maxRotation: 0 }, grid: { color: 'rgba(255,255,255,.05)' } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: { backgroundColor: '#141929', borderColor: 'rgba(255,255,255,.07)', borderWidth: 1, titleColor: '#f1f5f9', bodyColor: '#94a3b8', callbacks: { label: ctx=>' Posición #'+ctx.raw } }
+          }
+        }
+      });
+    }
+
+    loadAll();
+  
+      // ─── Menú hamburguesa ───
+      function toggleMenu() {
+        var links = document.getElementById('navLinks');
+        var btn   = document.getElementById('hamburger');
+        if (!links) return;
+        links.classList.toggle('mobile-open');
+        btn.textContent = links.classList.contains('mobile-open') ? '✕' : '☰';
+      }
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('nav')) {
+          var links = document.getElementById('navLinks');
+          if (links) links.classList.remove('mobile-open');
+          var btn = document.getElementById('hamburger');
+          if (btn) btn.textContent = '☰';
+        }
+      });
+      // ─── Sesión compartida (todas las páginas) ───
+      function doLogout() {
+        localStorage.removeItem('porra2026_user');
+        window.location.href = 'index.html';
+      }
+      function initSession() {
+        var raw = localStorage.getItem('porra2026_user');
+        if (!raw) return;
+        try {
+          var u = JSON.parse(raw);
+          if (!u || !u.id || !u.nombre) return;
+          var navUser = document.getElementById('navUser');
+          if (navUser) {
+            navUser.style.display = 'flex';
+            var nameEl = document.getElementById('navUserName');
+            if (nameEl) {
+              nameEl.textContent = '\uD83D\uDC4B ' + u.nombre;
+              nameEl.href = 'perfil.html?pid=' + encodeURIComponent(u.id);
+            }
+          }
+          var links = document.getElementById('navLinks');
+          if (links && !document.getElementById('mobileUserRow')) {
+            var row = document.createElement('div');
+            row.id = 'mobileUserRow';
+            row.innerHTML = '<span class="mu-name">\uD83D\uDC4B ' + u.nombre + '</span>'
+              + '<button class="mu-logout" onclick="doLogout()">Salir</button>';
+            links.appendChild(row);
+          }
+        } catch(_) {}
+      }
+      initSession();
+</script>
+</body>
+</html>

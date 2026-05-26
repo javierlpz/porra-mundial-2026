@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reglas · Porra Mundial 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:      #07090f;
+      --surface: #0f1320;
+      --card:    #141929;
+      --border:  rgba(255,255,255,.07);
+      --gold:    #f0b429;
+      --gold2:   #ffd76e;
+      --green:   #22c55e;
+      --blue:    #3b82f6;
+      --red:     #ef4444;
+      --text:    #f1f5f9;
+      --muted:   #64748b;
+      --silver:  #94a3b8;
+      --radius:  14px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ——— Nav ——— */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; height: 64px;
+      background: rgba(7,9,15,.9); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { font-family: 'Bebas Neue', cursive; font-size: 1.4rem; letter-spacing: .08em; color: var(--gold); }
+    .nav-logo span { color: var(--text); }
+    .nav-links { display: flex; gap: 6px; }
+    .nav-links a {
+      text-decoration: none; color: var(--silver);
+      font-size: .875rem; font-weight: 500;
+      padding: 7px 14px; border-radius: 8px; transition: all .2s;
+    }
+    .nav-links a:hover, .nav-links a.active { color: var(--text); background: rgba(255,255,255,.06); }
+    .nav-links a.active { color: var(--gold); }
+
+    /* ——— Header ——— */
+    .page-header {
+      padding: 56px 24px 44px; text-align: center;
+      background:
+        radial-gradient(ellipse 70% 50% at 50% 0%, rgba(240,180,41,.12) 0%, transparent 70%);
+      border-bottom: 1px solid var(--border);
+    }
+    .page-header h1 {
+      font-family: 'Bebas Neue', cursive;
+      font-size: clamp(2.5rem, 8vw, 5rem);
+      letter-spacing: .06em; margin-bottom: 8px;
+    }
+    .page-header p { color: var(--silver); font-size: .95rem; max-width: 520px; margin: 0 auto; }
+
+    /* ——— Layout ——— */
+    .content {
+      max-width: 820px; margin: 0 auto;
+      padding: 48px 24px 80px;
+      display: flex; flex-direction: column; gap: 40px;
+    }
+
+    /* ——— Section block ——— */
+    .block { }
+    .block-header {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 20px; padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .block-icon { font-size: 1.8rem; flex-shrink: 0; }
+    .block-title {
+      font-family: 'Bebas Neue', cursive;
+      font-size: 1.7rem; letter-spacing: .05em;
+    }
+    .block-body { display: flex; flex-direction: column; gap: 10px; }
+
+    /* ——— Scoring table ——— */
+    .score-table { width: 100%; border-collapse: collapse; }
+    .score-table thead th {
+      padding: 9px 14px; text-align: left;
+      font-size: .72rem; text-transform: uppercase;
+      letter-spacing: .07em; color: var(--muted);
+      background: var(--surface); border-bottom: 1px solid var(--border);
+    }
+    .score-table thead th:last-child { text-align: right; }
+    .score-table tbody tr {
+      border-bottom: 1px solid var(--border); transition: background .15s;
+    }
+    .score-table tbody tr:last-child { border-bottom: none; }
+    .score-table tbody tr:hover { background: rgba(255,255,255,.025); }
+    .score-table td { padding: 12px 14px; font-size: .9rem; vertical-align: middle; }
+    .score-table td:last-child { text-align: right; }
+    .pts-chip {
+      display: inline-flex; align-items: center; justify-content: center;
+      font-family: 'Bebas Neue', cursive; font-size: 1.2rem;
+      color: var(--gold); min-width: 52px;
+    }
+    .pts-chip.bonus { color: var(--green); }
+    .pts-chip.big   { font-size: 1.5rem; }
+    .table-wrap {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .table-section-label {
+      padding: 8px 14px; font-size: .72rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .08em;
+      color: var(--muted); background: rgba(255,255,255,.03);
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ——— Info cards ——— */
+    .info-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px;
+      display: flex; gap: 14px; align-items: flex-start;
+    }
+    .info-card-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 2px; }
+    .info-card-title { font-weight: 700; font-size: .95rem; margin-bottom: 4px; }
+    .info-card-body { font-size: .87rem; color: var(--silver); line-height: 1.6; }
+
+    .info-card.highlight {
+      border-color: rgba(240,180,41,.25);
+      background: linear-gradient(135deg, rgba(240,180,41,.07) 0%, var(--card) 100%);
+    }
+    .info-card.green {
+      border-color: rgba(34,197,94,.2);
+      background: linear-gradient(135deg, rgba(34,197,94,.06) 0%, var(--card) 100%);
+    }
+    .info-card.red {
+      border-color: rgba(239,68,68,.2);
+      background: linear-gradient(135deg, rgba(239,68,68,.06) 0%, var(--card) 100%);
+    }
+
+    /* ——— Phase timeline ——— */
+    .phase-timeline { display: flex; flex-direction: column; gap: 12px; }
+    .phase-row {
+      display: flex; gap: 0; align-items: stretch;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .phase-stripe {
+      width: 5px; flex-shrink: 0;
+    }
+    .phase-stripe.grupos    { background: var(--blue); }
+    .phase-stripe.elim      { background: var(--gold); }
+    .phase-stripe.especiales{ background: var(--green); }
+    .phase-content { padding: 16px 18px; flex: 1; }
+    .phase-name {
+      font-weight: 700; font-size: .95rem; margin-bottom: 4px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .phase-badge {
+      font-size: .68rem; padding: 2px 8px; border-radius: 100px;
+      font-weight: 700; letter-spacing: .04em;
+    }
+    .badge-blue   { background: rgba(59,130,246,.15);  color: #7dd3fc; }
+    .badge-gold   { background: rgba(240,180,41,.15);  color: var(--gold); }
+    .badge-green  { background: rgba(34,197,94,.15);   color: var(--green); }
+    .phase-desc { font-size: .85rem; color: var(--silver); line-height: 1.6; }
+    .phase-lock {
+      font-size: .78rem; color: var(--muted);
+      margin-top: 6px; display: flex; align-items: center; gap: 5px;
+    }
+
+    /* ——— FAQ ——— */
+    .faq-item {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .faq-q {
+      padding: 16px 20px; font-weight: 700; font-size: .92rem;
+      cursor: pointer; display: flex; justify-content: space-between;
+      align-items: center; transition: background .15s; user-select: none;
+    }
+    .faq-q:hover { background: rgba(255,255,255,.03); }
+    .faq-q .arrow { color: var(--muted); transition: transform .2s; font-size: .8rem; }
+    .faq-q.open .arrow { transform: rotate(180deg); color: var(--gold); }
+    .faq-a {
+      display: none; padding: 0 20px 16px;
+      font-size: .87rem; color: var(--silver); line-height: 1.7;
+      border-top: 1px solid var(--border);
+    }
+    .faq-a.visible { display: block; padding-top: 14px; }
+
+    /* ——— CTA ——— */
+    .cta-block {
+      text-align: center; padding: 40px 24px;
+      background: linear-gradient(135deg, rgba(240,180,41,.1) 0%, rgba(240,180,41,.03) 100%);
+      border: 1px solid rgba(240,180,41,.2);
+      border-radius: var(--radius);
+    }
+    .cta-block h2 {
+      font-family: 'Bebas Neue', cursive; font-size: 2rem;
+      letter-spacing: .06em; margin-bottom: 10px;
+    }
+    .cta-block p { color: var(--silver); font-size: .9rem; margin-bottom: 24px; }
+    .btn-cta {
+      display: inline-block; padding: 14px 36px;
+      background: var(--gold); color: #0a0c10;
+      font-weight: 700; font-size: 1rem;
+      border-radius: 12px; text-decoration: none;
+      transition: opacity .2s;
+    }
+    .btn-cta:hover { opacity: .88; }
+
+    /* ——— Footer ——— */
+    footer {
+      text-align: center; padding: 28px 24px;
+      border-top: 1px solid var(--border);
+      font-size: .78rem; color: var(--muted);
+    }
+
+    @media (max-width: 640px) {
+      nav { padding: 0 14px; }
+      .nav-links a { padding: 6px 9px; font-size: .78rem; }
+      .content { padding: 28px 16px 60px; }
+    }
+
+    /* ——— Hamburguesa ——— */
+    .hamburger {
+      display: none; background: none; border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 10px; cursor: pointer;
+      color: var(--silver); font-size: 1.1rem; font-family: inherit;
+      line-height: 1; transition: all .2s;
+    }
+    .hamburger:hover { border-color: rgba(255,255,255,.2); color: var(--text); }
+    /* ——— Etiqueta "Nuevo" ——— */
+    .tag-nuevo {
+      display: inline-block; font-size: .65rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .06em;
+      padding: 2px 7px; border-radius: 4px; margin-left: 8px;
+      background: rgba(34,197,94,.15); color: var(--green); border: 1px solid rgba(34,197,94,.2);
+      vertical-align: middle;
+    }
+    .tag-extra {
+      display: inline-block; font-size: .65rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .06em;
+      padding: 2px 7px; border-radius: 4px; margin-left: 8px;
+      background: rgba(240,180,41,.12); color: var(--gold); border: 1px solid rgba(240,180,41,.2);
+      vertical-align: middle;
+    }
+    /* ——— Logros grid ——— */
+    .achievements-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+    .ach-item {
+      display: flex; gap: 12px; align-items: flex-start;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 14px;
+    }
+    .ach-icon-lg { font-size: 1.5rem; flex-shrink: 0; }
+    .ach-name { font-weight: 700; font-size: .85rem; margin-bottom: 3px; }
+    .ach-desc { font-size: .75rem; color: var(--muted); line-height: 1.45; }
+    @media (max-width: 640px) {
+      nav { padding: 0 14px; 
+        .hamburger { display: block; }
+        .nav-user  { display: none !important; }
+        .nav-links {
+          display: none; position: fixed; top: 64px; left: 0; right: 0;
+          background: rgba(7,9,15,.97); backdrop-filter: blur(16px);
+          flex-direction: column; padding: 12px;
+          border-bottom: 1px solid var(--border); z-index: 99; gap: 0;
+        }
+        .nav-links.mobile-open { display: flex; }
+        .nav-links a { padding: 10px 14px; font-size: .9rem; width: 100%; border-radius: 8px; }
+        #mobileUserRow { display: flex; }
+      }
+      .nav-links.mobile-open { display: flex; }
+      .nav-links a { padding: 10px 14px; font-size: .9rem; width: 100%; border-radius: 8px; }
+    }
+
+      /* ——— Nav user ——— */
+      .nav-user { display: none; align-items: center; gap: 8px; flex-shrink: 0; }
+      .nav-user-name { font-size: .875rem; font-weight: 600; color: var(--gold); text-decoration: none; }
+      .nav-user-name:hover { text-decoration: underline; }
+      .nav-logout {
+        background: none; border: 1px solid var(--border); border-radius: 8px;
+        padding: 5px 12px; color: var(--muted); cursor: pointer;
+        font-family: inherit; font-size: .8rem; transition: all .2s;
+      }
+      .nav-logout:hover { border-color: var(--red); color: var(--red); }
+      /* ——— Hamburguesa ——— */
+      .hamburger {
+        display: none; background: none; border: 1px solid var(--border);
+        border-radius: 8px; padding: 6px 10px; cursor: pointer;
+        color: var(--silver); font-size: 1.1rem; font-family: inherit;
+        line-height: 1; transition: all .2s; flex-shrink: 0;
+      }
+      .hamburger:hover { border-color: rgba(255,255,255,.2); color: var(--text); }
+      /* ——— Mobile user row (inside hamburger menu) ——— */
+      #mobileUserRow {
+        display: none;
+        border-top: 1px solid rgba(255,255,255,.07);
+        margin-top: 6px; padding: 10px 14px 4px;
+        align-items: center; justify-content: space-between; gap: 8px;
+      }
+      #mobileUserRow .mu-name { font-size: .9rem; font-weight: 600; color: var(--gold); }
+      #mobileUserRow .mu-logout {
+        background: none; border: 1px solid rgba(239,68,68,.3);
+        border-radius: 8px; padding: 5px 10px; color: var(--red);
+        font-family: inherit; font-size: .78rem; cursor: pointer;
+      }
+
+      /* ——— Hamburguesa mobile rules ——— */
+      @media (max-width: 640px) {
+        .hamburger  { display: block !important; }
+        .nav-user   { display: none !important; }
+        #navCta     { display: none !important; }
+        .nav-links  {
+          display: none !important;
+          position: fixed; top: 64px; left: 0; right: 0;
+          background: rgba(7,9,15,.97);
+          backdrop-filter: blur(16px);
+          flex-direction: column !important;
+          padding: 12px;
+          border-bottom: 1px solid rgba(255,255,255,.07);
+          z-index: 99;
+          gap: 0 !important;
+        }
+        .nav-links.mobile-open { display: flex !important; }
+        .nav-links a { padding: 10px 14px !important; font-size: .9rem !important; width: 100%; border-radius: 8px; }
+        #mobileUserRow { display: flex !important; }
+      }
+      @media (max-width: 600px) {
+        .hamburger  { display: block !important; }
+        .nav-user   { display: none !important; }
+        .nav-links  {
+          display: none !important;
+          position: fixed; top: 64px; left: 0; right: 0;
+          background: rgba(7,9,15,.97);
+          backdrop-filter: blur(16px);
+          flex-direction: column !important;
+          padding: 12px;
+          border-bottom: 1px solid rgba(255,255,255,.07);
+          z-index: 99;
+          gap: 0 !important;
+        }
+        .nav-links.mobile-open { display: flex !important; }
+        .nav-links a { padding: 10px 14px !important; font-size: .9rem !important; width: 100%; border-radius: 8px; }
+        #mobileUserRow { display: flex !important; }
+      }
+  </style>
+</head>
+<body>
+
+  <nav>
+
+    <a href="index.html" style="text-decoration:none"><div class="nav-logo">⚽ PORRA <span>2026</span></div></a>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html">Ranking</a>
+      <a href="mis-picks.html">Mis Apuestas</a>
+      <a href="bracket.html">Cuadro</a>
+      <a href="reglas.html" class="active">Reglas</a>
+    </div>
+      <div class="nav-user" id="navUser" style="display:none">
+        <a href="#" id="navUserName" class="nav-user-name"></a>
+        <button class="nav-logout" onclick="doLogout()">Salir</button>
+      </div>
+      <button class="hamburger" id="hamburger" onclick="toggleMenu()" aria-label="Menú">☰</button>
+  </nav>
+
+  <div class="page-header">
+    <h1>📋 REGLAS & PUNTUACIÓN</h1>
+    <p>Todo lo que necesitas saber para participar en la Porra Mundial 2026</p>
+  </div>
+
+  <div class="content">
+
+    <!-- ——— Cómo participar ——— -->
+    <div class="block">
+      <div class="block-header">
+        <div class="block-icon">👤</div>
+        <div class="block-title">Cómo participar</div>
+      </div>
+      <div class="block-body">
+        <div class="info-card highlight">
+          <div class="info-card-icon">1️⃣</div>
+          <div>
+            <div class="info-card-title">Regístrate en "Mis Apuestas"</div>
+            <div class="info-card-body">Elige un nombre y crea un PIN de 4 dígitos. Guárdalos bien — son tu acceso para hacer y modificar predicciones.</div>
+          </div>
+        </div>
+        <div class="info-card highlight">
+          <div class="info-card-icon">2️⃣</div>
+          <div>
+            <div class="info-card-title">Haz tus predicciones</div>
+            <div class="info-card-body">Predice el resultado (marcador exacto) de cada partido de la fase de grupos, elige tus apuestas especiales y guarda antes del cierre.</div>
+          </div>
+        </div>
+        <div class="info-card highlight">
+          <div class="info-card-icon">3️⃣</div>
+          <div>
+            <div class="info-card-title">Sigue el ranking en vivo</div>
+            <div class="info-card-body">Los puntos se calculan automáticamente según van llegando los resultados reales. El ranking se actualiza en tiempo real.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ——— Fases y plazos ——— -->
+    <div class="block">
+      <div class="block-header">
+        <div class="block-icon">🗓️</div>
+        <div class="block-title">Fases y plazos de apuestas</div>
+      </div>
+      <div class="phase-timeline">
+        <div class="phase-row">
+          <div class="phase-stripe grupos"></div>
+          <div class="phase-content">
+            <div class="phase-name">
+              Fase de Grupos
+              <span class="phase-badge badge-blue">FASE 1</span>
+            </div>
+            <div class="phase-desc">Predice el marcador exacto de los 72 partidos de grupo (12 grupos × 6 partidos). También puedes elegir quién será el campeón, finalista, semifinalistas, máximo goleador y sorpresa del torneo.</div>
+            <div class="phase-lock">🔒 Cierre: <strong>1 hora antes del primer partido de cada grupo</strong></div>
+          </div>
+        </div>
+        <div class="phase-row">
+          <div class="phase-stripe elim"></div>
+          <div class="phase-content">
+            <div class="phase-name">
+              Fase Eliminatoria
+              <span class="phase-badge badge-gold">FASE 2</span>
+            </div>
+            <div class="phase-desc">Desde octavos de final hasta la gran final, predice qué equipo pasa en cada cruce. Las predicciones se abren cuando se conocen los emparejamientos de cada ronda.</div>
+            <div class="phase-lock">🔒 Cierre: <strong>1 hora antes de cada partido individual</strong></div>
+          </div>
+        </div>
+        <div class="phase-row">
+          <div class="phase-stripe especiales"></div>
+          <div class="phase-content">
+            <div class="phase-name">
+              Predicciones Especiales
+              <span class="phase-badge badge-green">BONUS</span>
+            </div>
+            <div class="phase-desc">Campeón, finalista, semifinalistas, máximo goleador y sorpresa del torneo. Se hacen una sola vez y pueden dar puntos muy valiosos al final.</div>
+            <div class="phase-lock">🔒 Cierre: <strong>1 hora antes del primer partido del torneo</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ——— Sistema de puntuación ——— -->
+    <div class="block">
+      <div class="block-header">
+        <div class="block-icon">🏅</div>
+        <div class="block-title">Sistema de puntuación</div>
+      </div>
+
+      <div class="table-wrap">
+        <!-- Fase de grupos -->
+        <div class="table-section-label">⚽ Fase de Grupos</div>
+        <table class="score-table">
+          <thead>
+            <tr><th>Acierto</th><th>Puntos</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <strong>Resultado exacto</strong>
+                <div style="font-size:.78rem;color:var(--muted);margin-top:2px">Ej: predices 2-1 y acaba 2-1</div>
+              </td>
+              <td><span class="pts-chip big">4 pts</span></td>
+            </tr>
+            <tr>
+              <td>
+                <strong>Ganador o empate correcto</strong>
+                <div style="font-size:.78rem;color:var(--muted);margin-top:2px">Aciertas quién gana (o que empata) pero no el marcador exacto</div>
+              </td>
+              <td><span class="pts-chip">2 pts</span></td>
+            </tr>
+            <tr>
+              <td>
+                <strong>Clasificado de grupo correcto</strong>
+                <div style="font-size:.78rem;color:var(--muted);margin-top:2px">Un equipo que predijiste que pasaría de grupos, pasa</div>
+              </td>
+              <td><span class="pts-chip">3 pts</span></td>
+            </tr>
+            <tr>
+              <td>
+                <strong>1º y 2º del grupo exactos</strong>
+                <div style="font-size:.78rem;color:var(--muted);margin-top:2px">Aciertas los dos primeros clasificados del grupo en orden</div>
+              </td>
+              <td><span class="pts-chip big">5 pts</span></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Fase eliminatoria -->
+        <div class="table-section-label">⚡ Fase Eliminatoria (por partido)</div>
+        <table class="score-table">
+          <tbody>
+            <tr>
+              <td>
+                <strong>Aciertas el clasificado</strong>
+                <div style="font-size:.78rem;color:var(--muted);margin-top:2px">El equipo que predijiste que pasaría, pasa</div>
+              </td>
+              <td><span class="pts-chip big">4 pts</span></td>
+            </tr>
+            <tr>
+              <td>
+                <strong>Bonus: resultado exacto en 90 min</strong>
+                <div style="font-size:.78rem;color:var(--muted);margin-top:2px">Además aciertas el marcador al final de los 90 minutos</div>
+              </td>
+              <td><span class="pts-chip bonus">+3 pts</span></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Especiales -->
+        <div class="table-section-label">🌟 Predicciones Especiales</div>
+        <table class="score-table">
+          <tbody>
+            <tr>
+              <td><strong>🏆 Campeón del Mundial</strong></td>
+              <td><span class="pts-chip big" style="color:var(--gold)">10 pts</span></td>
+            </tr>
+            <tr>
+              <td><strong>🥈 Finalista perdedor</strong></td>
+              <td><span class="pts-chip big">5 pts</span></td>
+            </tr>
+            <tr>
+              <td><strong>4️⃣ Semifinalistas</strong> <span style="font-size:.8rem;color:var(--muted)">(por cada uno)</span></td>
+              <td><span class="pts-chip">4 pts</span></td>
+            </tr>
+            <tr>
+              <td><strong>👟 Máximo Goleador</strong></td>
+              <td><span class="pts-chip big" style="color:#f472b6">8 pts</span></td>
+            </tr>
+            <tr>
+              <td>
+                <strong>💥 Sorpresa del Torneo</strong>
+                <div style="font-size:.78rem;color:var(--muted);margin-top:2px">Equipo favorito que cae en fase de grupos</div>
+              </td>
+              <td><span class="pts-chip big" style="color:#a78bfa">6 pts</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ——— Normas de bloqueo ——— -->
+    <div class="block">
+      <div class="block-header">
+        <div class="block-icon">🔒</div>
+        <div class="block-title">Normas de bloqueo</div>
+      </div>
+      <div class="block-body">
+        <div class="info-card green">
+          <div class="info-card-icon">✅</div>
+          <div>
+            <div class="info-card-title">Puedes editar libremente hasta el cierre</div>
+            <div class="info-card-body">Puedes cambiar cualquier predicción tantas veces como quieras mientras el partido no esté bloqueado. El sistema guarda siempre la última versión.</div>
+          </div>
+        </div>
+        <div class="info-card red">
+          <div class="info-card-icon">🚫</div>
+          <div>
+            <div class="info-card-title">Una vez cerrado, no hay vuelta atrás</div>
+            <div class="info-card-body">El bloqueo lo valida el servidor, no el navegador. No hay forma de hacer trampa modificando la página. Si no hiciste la predicción antes del cierre, ese partido cuenta como no predicho (0 puntos).</div>
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-icon">⏰</div>
+          <div>
+            <div class="info-card-title">Horarios exactos de cierre</div>
+            <div class="info-card-body">
+              <strong>Fase de grupos:</strong> 1 hora antes del primer partido de ese grupo<br/>
+              <strong>Eliminatorias:</strong> 1 hora antes del kickoff de cada partido<br/>
+              <strong>Especiales:</strong> 1 hora antes del partido inaugural del torneo
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ——— Desempate ——— -->
+    <div class="block">
+      <div class="block-header">
+        <div class="block-icon">⚖️</div>
+        <div class="block-title">Criterios de desempate</div>
+      </div>
+      <div class="block-body">
+        <div class="info-card">
+          <div class="info-card-icon">1️⃣</div>
+          <div>
+            <div class="info-card-title">Mayor puntuación en predicciones especiales</div>
+            <div class="info-card-body">El que haya acertado más apuestas especiales (campeón, goleador, etc.) tiene prioridad.</div>
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-icon">2️⃣</div>
+          <div>
+            <div class="info-card-title">Mayor puntuación en la fase eliminatoria</div>
+            <div class="info-card-body">Si el empate persiste, se miran los puntos conseguidos en la fase eliminatoria.</div>
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-icon">3️⃣</div>
+          <div>
+            <div class="info-card-title">Mayor número de resultados exactos</div>
+            <div class="info-card-body">Como último criterio, quien haya acertado más marcadores exactos se lleva el desempate.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ——— Equipo Estrella (nuevo) ——— -->
+    <div class="block">
+      <div class="block-header">
+        <div class="block-icon">⭐</div>
+        <div class="block-title">Equipo Estrella <span class="tag-nuevo">✨ Nuevo</span></div>
+      </div>
+      <div class="block-body">
+        <div class="info-card highlight">
+          <div class="info-card-icon">⭐</div>
+          <div>
+            <div class="info-card-title">+1 punto extra por acierto</div>
+            <div class="info-card-body">Antes del torneo, cada jugador elige su <strong>Equipo Estrella</strong>. En cada partido donde juegue ese equipo y aciertes (ganador correcto o exacto), obtienes <strong>+1 punto extra</strong> automáticamente sobre los puntos normales. El punto estrella también se aplica dentro del Joker.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ——— Joker (nuevo) ——— -->
+    <div class="block">
+      <div class="block-header">
+        <div class="block-icon">🎰</div>
+        <div class="block-title">Partido Joker — ×2 <span class="tag-nuevo">✨ Nuevo</span></div>
+      </div>
+      <div class="block-body">
+        <div class="info-card highlight">
+          <div class="info-card-icon">🎰</div>
+          <div>
+            <div class="info-card-title">Una vez en toda la porra</div>
+            <div class="info-card-body">Cada jugador puede elegir <strong>un partido Joker</strong> a lo largo de toda la porra. Los puntos obtenidos en ese partido se <strong>multiplican por ×2</strong>. Se activa antes del cierre del partido (hasta 1h antes del kickoff) y no se puede cambiar una vez elegido. Si fallas en el partido joker, sigues a 0 (0 × 2 = 0).</div>
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-icon">💡</div>
+          <div>
+            <div class="info-card-title">Estrategia</div>
+            <div class="info-card-body">El joker es más valioso en eliminatorias (hasta 14 pts si aciertas exacto) que en grupos (hasta 8 pts). Muchos lo guardan para la final. Aunque el riesgo de quedarte a 0 también se multiplica.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ——— Logros (nuevo) ——— -->
+    <div class="block">
+      <div class="block-header">
+        <div class="block-icon">🏅</div>
+        <div class="block-title">Logros <span class="tag-nuevo">✨ Nuevo</span></div>
+      </div>
+      <div class="block-body">
+        <div class="info-card">
+          <div class="info-card-icon">ℹ️</div>
+          <div>
+            <div class="info-card-title">Sobre los logros</div>
+            <div class="info-card-body">Se calculan automáticamente según tu historial de picks y aparecen en tu perfil. No dan puntos extra, pero quedan para siempre. O para la vergüenza.</div>
+          </div>
+        </div>
+        <div class="achievements-grid">
+          <div class="ach-item"><div class="ach-icon-lg">🎯</div><div><div class="ach-name">El Quinielas</div><div class="ach-desc">Tu primer resultado exacto</div></div></div>
+          <div class="ach-item"><div class="ach-icon-lg">🔮</div><div><div class="ach-name">Nostradamus con Balón</div><div class="ach-desc">5 exactos consecutivos</div></div></div>
+          <div class="ach-item"><div class="ach-icon-lg">💀</div><div><div class="ach-name">Peor que el VAR</div><div class="ach-desc">3 partidos seguidos a 0 puntos</div></div></div>
+          <div class="ach-item"><div class="ach-icon-lg">🐙</div><div><div class="ach-name">Paul el Pulpo</div><div class="ach-desc">>75% de acierto (mín. 10 partidos)</div></div></div>
+          <div class="ach-item"><div class="ach-icon-lg">🏀</div><div><div class="ach-name">¿Esto es la NBA?</div><div class="ach-desc">Exacto en partido con 4+ goles</div></div></div>
+          <div class="ach-item"><div class="ach-icon-lg">😴</div><div><div class="ach-name">Copy-Paste FC</div><div class="ach-desc">El mismo marcador en 8+ partidos</div></div></div>
+          <div class="ach-item"><div class="ach-icon-lg">🔥</div><div><div class="ach-name">Hat-Trick de Sofá</div><div class="ach-desc">3 exactos en el mismo día</div></div></div>
+          <div class="ach-item"><div class="ach-icon-lg">🤡</div><div><div class="ach-name">Seleccionador Nacional</div><div class="ach-desc">5 partidos seguidos sin acertar el ganador</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ——— Visibilidad de picks ——— -->
+    <div class="block">
+      <div class="block-header">
+        <div class="block-icon">👁️</div>
+        <div class="block-title">Ver picks de otros</div>
+      </div>
+      <div class="block-body">
+        <div class="info-card">
+          <div class="info-card-icon">🔓</div>
+          <div>
+            <div class="info-card-title">Visibles solo después del cierre</div>
+            <div class="info-card-body">Los picks de cada participante son <strong>privados hasta que el partido se cierra</strong> (1 hora antes del kickoff). A partir de ese momento, en "Mis Apuestas" puedes ver qué predijo cada uno y el porcentaje de consenso local/empate/visitante. Esto evita el copypaste pero permite el pique una vez que ya no hay marcha atrás.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ——— FAQ ——— -->
+    <div class="block">
+      <div class="block-header">
+        <div class="block-icon">❓</div>
+        <div class="block-title">Preguntas frecuentes</div>
+      </div>
+      <div class="block-body">
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)">
+            ¿Qué pasa si un partido va a prórroga o penaltis?
+            <span class="arrow">▼</span>
+          </div>
+          <div class="faq-a">
+            En la fase eliminatoria solo se puntúa el resultado al final de los 90 minutos reglamentarios. Si hay prórroga o penaltis, lo que cuenta para la puntuación es el marcador tras los 90 minutos, no el resultado final después de la prórroga.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)">
+            ¿Puedo registrarme con el mismo nombre que otra persona?
+            <span class="arrow">▼</span>
+          </div>
+          <div class="faq-a">
+            No. Los nombres son únicos en la porra. Si alguien ya registró ese nombre, tendrás que elegir uno diferente. Los nombres distinguen mayúsculas de minúsculas (ej: "Javi" y "javi" son distintos).
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)">
+            ¿Qué pasa si olvido mi PIN?
+            <span class="arrow">▼</span>
+          </div>
+          <div class="faq-a">
+            El PIN no se puede recuperar por seguridad. Si lo olvidas, tendrás que registrarte con un nombre diferente y perderás tus predicciones anteriores. ¡Apúntalo en un lugar seguro!
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)">
+            ¿Cuándo se actualizan los puntos?
+            <span class="arrow">▼</span>
+          </div>
+          <div class="faq-a">
+            Los resultados se sincronizan automáticamente cada 5 minutos desde la API oficial de football-data.org. Los puntos se recalculan justo después. El ranking en la página principal se refresca automáticamente cada 60 segundos.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)">
+            ¿Tengo que predecir todos los partidos?
+            <span class="arrow">▼</span>
+          </div>
+          <div class="faq-a">
+            No es obligatorio, pero solo puntúan los partidos que hayas predicho. Un partido sin predicción vale 0 puntos. Cuantas más predicciones hagas, más opciones de acumular puntos.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)">
+            ¿Qué es la "Sorpresa del Torneo"?
+            <span class="arrow">▼</span>
+          </div>
+          <div class="faq-a">
+            Elige un equipo considerado favorito (top-10 del ranking FIFA) que crea que va a ser eliminado en la fase de grupos. Si ese equipo cae en grupos, ganas 6 puntos. Es la predicción más especulativa y difícil, pero también la más emocionante.
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ——— CTA ——— -->
+    <div class="cta-block">
+      <h2>¿Listo para jugar?</h2>
+      <p>Regístrate, haz tus apuestas y demuestra que sabes más de fútbol que nadie</p>
+      <a href="mis-picks.html" class="btn-cta">⚽ Hacer mis apuestas →</a>
+    </div>
+
+  </div><!-- /content -->
+
+  <footer>Porra Mundial 2026</footer>
+
+  <script>
+    function toggleFaq(el) {
+      el.classList.toggle('open');
+      const answer = el.nextElementSibling;
+      answer.classList.toggle('visible');
+    }
+
+      // ─── Menú hamburguesa ───
+      function toggleMenu() {
+        var links = document.getElementById('navLinks');
+        var btn   = document.getElementById('hamburger');
+        if (!links) return;
+        links.classList.toggle('mobile-open');
+        btn.textContent = links.classList.contains('mobile-open') ? '✕' : '☰';
+      }
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('nav')) {
+          var links = document.getElementById('navLinks');
+          if (links) links.classList.remove('mobile-open');
+          var btn = document.getElementById('hamburger');
+          if (btn) btn.textContent = '☰';
+        }
+      });
+      // ─── Sesión compartida (todas las páginas) ───
+      function doLogout() {
+        localStorage.removeItem('porra2026_user');
+        window.location.href = 'index.html';
+      }
+      function initSession() {
+        var raw = localStorage.getItem('porra2026_user');
+        if (!raw) return;
+        try {
+          var u = JSON.parse(raw);
+          if (!u || !u.id || !u.nombre) return;
+          var navUser = document.getElementById('navUser');
+          if (navUser) {
+            navUser.style.display = 'flex';
+            var nameEl = document.getElementById('navUserName');
+            if (nameEl) {
+              nameEl.textContent = '\uD83D\uDC4B ' + u.nombre;
+              nameEl.href = 'perfil.html?pid=' + encodeURIComponent(u.id);
+            }
+          }
+          var links = document.getElementById('navLinks');
+          if (links && !document.getElementById('mobileUserRow')) {
+            var row = document.createElement('div');
+            row.id = 'mobileUserRow';
+            row.innerHTML = '<span class="mu-name">\uD83D\uDC4B ' + u.nombre + '</span>'
+              + '<button class="mu-logout" onclick="doLogout()">Salir</button>';
+            links.appendChild(row);
+          }
+        } catch(_) {}
+      }
+      initSession();
+</script>
+
+</body>
+</html>

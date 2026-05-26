@@ -1,0 +1,1434 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Porra Mundial 2026 🏆</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700;900&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /* ——— Variables ——— */
+      :root {
+        --bg: #07090f;
+        --surface: #0f1320;
+        --card: #141929;
+        --border: rgba(255, 255, 255, 0.07);
+        --gold: #f0b429;
+        --gold2: #ffd76e;
+        --green: #22c55e;
+        --blue: #3b82f6;
+        --red: #ef4444;
+        --text: #f1f5f9;
+        --muted: #64748b;
+        --silver: #94a3b8;
+        --bronze: #d97706;
+        --radius: 14px;
+      }
+
+      /* ——— Reset & Base ——— */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        font-family: "Outfit", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+
+      /* ——— Background noise texture ——— */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* ——— Navbar ——— */
+      nav {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        height: 64px;
+        background: rgba(7, 9, 15, 0.85);
+        backdrop-filter: blur(16px);
+        border-bottom: 1px solid var(--border);
+      }
+      .nav-logo {
+        font-family: "Bebas Neue", cursive;
+        font-size: 1.4rem;
+        letter-spacing: 0.08em;
+        color: var(--gold);
+      }
+      .nav-logo span {
+        color: var(--text);
+      }
+      .nav-links {
+        display: flex;
+        gap: 6px;
+      }
+      .nav-links a {
+        text-decoration: none;
+        color: var(--silver);
+        font-size: 0.875rem;
+        font-weight: 500;
+        padding: 7px 14px;
+        border-radius: 8px;
+        transition: all 0.2s;
+      }
+      .nav-links a:hover,
+      .nav-links a.active {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .nav-links a.active {
+        color: var(--gold);
+      }
+      .nav-cta {
+        background: var(--gold);
+        color: #0a0c10;
+        font-weight: 700;
+        font-size: 0.85rem;
+        padding: 8px 18px;
+        border-radius: 9px;
+        text-decoration: none;
+        transition: opacity 0.2s;
+        white-space: nowrap;
+      }
+      .nav-cta:hover {
+        opacity: 0.88;
+      }
+
+      /* ——— Hero ——— */
+      .hero {
+        position: relative;
+        overflow: hidden;
+        padding: 72px 24px 60px;
+        text-align: center;
+        background:
+          radial-gradient(
+            ellipse 80% 60% at 50% 0%,
+            rgba(240, 180, 41, 0.12) 0%,
+            transparent 70%
+          ),
+          radial-gradient(
+            ellipse 50% 40% at 80% 100%,
+            rgba(34, 197, 94, 0.07) 0%,
+            transparent 60%
+          );
+      }
+      .hero-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(240, 180, 41, 0.1);
+        border: 1px solid rgba(240, 180, 41, 0.25);
+        padding: 5px 14px;
+        border-radius: 100px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        color: var(--gold);
+        text-transform: uppercase;
+        margin-bottom: 20px;
+      }
+      .live-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--green);
+        box-shadow: 0 0 8px var(--green);
+        animation: pulse 1.5s infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.6;
+          transform: scale(0.85);
+        }
+      }
+
+      .hero h1 {
+        font-family: "Bebas Neue", cursive;
+        font-size: clamp(3.5rem, 10vw, 7rem);
+        letter-spacing: 0.04em;
+        line-height: 1;
+        background: linear-gradient(135deg, #ffffff 30%, var(--gold) 70%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 6px;
+      }
+      .hero-sub {
+        font-size: clamp(0.9rem, 2vw, 1.15rem);
+        color: var(--silver);
+        font-weight: 400;
+        margin-bottom: 36px;
+      }
+
+      /* ——— Stats strip ——— */
+      .stats-strip {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+        max-width: 700px;
+        margin: 0 auto;
+      }
+      .stat-pill {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        padding: 10px 20px;
+        border-radius: 100px;
+      }
+      .stat-icon {
+        font-size: 1.1rem;
+      }
+      .stat-value {
+        font-family: "Bebas Neue", cursive;
+        font-size: 1.2rem;
+        color: var(--gold);
+        line-height: 1;
+      }
+      .stat-label {
+        font-size: 0.72rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      /* ——— Section layout ——— */
+      .section {
+        padding: 48px 24px;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .section-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 28px;
+      }
+      .section-title {
+        font-family: "Bebas Neue", cursive;
+        font-size: 1.8rem;
+        letter-spacing: 0.06em;
+        color: var(--text);
+      }
+      .section-meta {
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+
+      /* ——— Podium (top 3) ——— */
+      .podium {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 32px;
+      }
+      .podium-card {
+        position: relative;
+        padding: 24px 16px 20px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        text-align: center;
+        overflow: hidden;
+        transition: transform 0.2s;
+      }
+      .podium-card:hover {
+        transform: translateY(-3px);
+      }
+      .podium-card.pos-1 {
+        background: linear-gradient(
+          160deg,
+          rgba(240, 180, 41, 0.15) 0%,
+          rgba(240, 180, 41, 0.04) 100%
+        );
+        border-color: rgba(240, 180, 41, 0.3);
+        order: 2;
+      }
+      .podium-card.pos-2 {
+        background: linear-gradient(
+          160deg,
+          rgba(148, 163, 184, 0.1) 0%,
+          rgba(148, 163, 184, 0.02) 100%
+        );
+        border-color: rgba(148, 163, 184, 0.2);
+        order: 1;
+        margin-top: 20px;
+      }
+      .podium-card.pos-3 {
+        background: linear-gradient(
+          160deg,
+          rgba(217, 119, 6, 0.1) 0%,
+          rgba(217, 119, 6, 0.02) 100%
+        );
+        border-color: rgba(217, 119, 6, 0.2);
+        order: 3;
+        margin-top: 20px;
+      }
+      .podium-medal {
+        font-size: 2rem;
+        margin-bottom: 8px;
+      }
+      .podium-name {
+        font-weight: 700;
+        font-size: 1rem;
+        margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .podium-pts {
+        font-family: "Bebas Neue", cursive;
+        font-size: 2.4rem;
+        line-height: 1;
+      }
+      .podium-card.pos-1 .podium-pts {
+        color: var(--gold);
+      }
+      .podium-card.pos-2 .podium-pts {
+        color: var(--silver);
+      }
+      .podium-card.pos-3 .podium-pts {
+        color: var(--bronze);
+      }
+      .podium-label {
+        font-size: 0.7rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .podium-breakdown {
+        margin-top: 10px;
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .pts-badge {
+        font-size: 0.68rem;
+        padding: 2px 8px;
+        border-radius: 100px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--silver);
+      }
+
+      /* ——— Full ranking table ——— */
+      .ranking-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .ranking-table thead th {
+        padding: 10px 14px;
+        text-align: left;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--muted);
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+      }
+      .ranking-table thead th:last-child {
+        text-align: right;
+      }
+      .ranking-table tbody tr {
+        border-bottom: 1px solid var(--border);
+        transition: background 0.15s;
+      }
+      .ranking-table tbody tr:hover {
+        background: rgba(255, 255, 255, 0.025);
+      }
+      .ranking-table tbody tr:last-child {
+        border-bottom: none;
+      }
+      .ranking-table td {
+        padding: 13px 14px;
+        vertical-align: middle;
+      }
+      .rank-pos {
+        font-family: "Bebas Neue", cursive;
+        font-size: 1.1rem;
+        color: var(--muted);
+        width: 36px;
+      }
+      .rank-medal {
+        width: 24px;
+      }
+      .rank-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+      }
+      .rank-pts-cell {
+        text-align: right;
+      }
+      .rank-total {
+        font-family: "Bebas Neue", cursive;
+        font-size: 1.4rem;
+        color: var(--gold);
+      }
+      .rank-breakdown {
+        font-size: 0.72rem;
+        color: var(--muted);
+        margin-top: 1px;
+      }
+      .rank-bar-wrap {
+        width: 120px;
+      }
+      .rank-bar {
+        height: 4px;
+        border-radius: 100px;
+        background: rgba(255, 255, 255, 0.07);
+      }
+      .rank-bar-fill {
+        height: 100%;
+        border-radius: 100px;
+        background: linear-gradient(90deg, var(--gold), var(--gold2));
+        transition: width 0.6s ease;
+      }
+      .table-wrap {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+
+      /* ——— Matches grid ——— */
+      .matches-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 12px;
+      }
+      .match-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        transition:
+          border-color 0.2s,
+          transform 0.2s;
+      }
+      .match-card:hover {
+        border-color: rgba(240, 180, 41, 0.25);
+        transform: translateY(-2px);
+      }
+      .match-card.live {
+        border-color: rgba(34, 197, 94, 0.3);
+      }
+      .match-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .match-group {
+        font-size: 0.7rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+      }
+      .match-status-badge {
+        font-size: 0.68rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 100px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .badge-live {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--green);
+      }
+      .badge-done {
+        background: rgba(100, 116, 139, 0.15);
+        color: var(--muted);
+      }
+      .badge-soon {
+        background: rgba(59, 130, 246, 0.12);
+        color: #7dd3fc;
+      }
+      .match-teams {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .team {
+        flex: 1;
+        text-align: center;
+      }
+      .team-name {
+        font-weight: 700;
+        font-size: 0.9rem;
+      }
+      .team-flag {
+        font-size: 1.6rem;
+        margin-bottom: 3px;
+      }
+      .match-score {
+        text-align: center;
+        min-width: 52px;
+      }
+      .score-display {
+        font-family: "Bebas Neue", cursive;
+        font-size: 2rem;
+        letter-spacing: 0.05em;
+        line-height: 1;
+      }
+      .score-vs {
+        font-size: 0.7rem;
+        color: var(--muted);
+      }
+      .match-time {
+        font-size: 0.72rem;
+        color: var(--muted);
+        text-align: center;
+        margin-top: 10px;
+      }
+
+      /* ——— Empty state ——— */
+      .empty-state {
+        text-align: center;
+        padding: 48px 24px;
+        color: var(--muted);
+      }
+      .empty-state .icon {
+        font-size: 2.5rem;
+        margin-bottom: 12px;
+      }
+      .empty-state p {
+        font-size: 0.9rem;
+      }
+
+      /* ——— Updated badge ——— */
+      .updated-badge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+      .updated-badge::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--green);
+      }
+
+      /* ——— Loading skeleton ——— */
+      .skeleton {
+        background: linear-gradient(
+          90deg,
+          var(--card) 25%,
+          var(--surface) 50%,
+          var(--card) 75%
+        );
+        background-size: 400% 100%;
+        animation: shimmer 1.4s infinite;
+        border-radius: 8px;
+      }
+      @keyframes shimmer {
+        0% {
+          background-position: 100%;
+        }
+        100% {
+          background-position: -100%;
+        }
+      }
+      .skeleton-row {
+        height: 54px;
+        margin-bottom: 2px;
+      }
+
+      /* ——— Footer ——— */
+      footer {
+        text-align: center;
+        padding: 32px 24px;
+        border-top: 1px solid var(--border);
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+
+      /* ——— Responsive ——— */
+      @media (max-width: 640px) {
+        .podium {
+          grid-template-columns: 1fr;
+        }
+        .podium-card.pos-1,
+        .podium-card.pos-2,
+        .podium-card.pos-3 {
+          order: unset;
+          margin-top: 0;
+        }
+        .rank-bar-wrap {
+          display: none;
+        }
+        nav {
+          padding: 0 14px;
+        }
+        .nav-links a {
+          padding: 6px 10px;
+          font-size: 0.8rem;
+        }
+        .hero {
+          padding: 52px 16px 44px;
+        }
+      
+        .hamburger { display: block; }
+        #navCta { display: none; }
+        .nav-user  { display: none !important; }
+        .nav-links {
+          display: none; position: fixed; top: 64px; left: 0; right: 0;
+          background: rgba(7,9,15,.97); backdrop-filter: blur(16px);
+          flex-direction: column; padding: 12px;
+          border-bottom: 1px solid var(--border); z-index: 99; gap: 0;
+        }
+        .nav-links.mobile-open { display: flex; }
+        .nav-links a { padding: 10px 14px; font-size: .9rem; width: 100%; border-radius: 8px; }
+        #mobileUserRow { display: flex; }
+      }
+    
+      /* ——— La Crónica del Día ——— */
+      .cronica-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .cronica-card {
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 20px 22px;
+      }
+      .cronica-card.lider-card {
+        border-color: rgba(240,180,41,.25);
+        background: linear-gradient(135deg, rgba(240,180,41,.06) 0%, var(--card) 100%);
+      }
+      .cronica-card.colista-card {
+        border-color: rgba(239,68,68,.2);
+        background: linear-gradient(135deg, rgba(239,68,68,.05) 0%, var(--card) 100%);
+      }
+      .cronica-tag {
+        font-size: .7rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: .08em; padding: 2px 8px; border-radius: 4px;
+        display: inline-block; margin-bottom: 8px;
+      }
+      .lider-card .cronica-tag { background: rgba(240,180,41,.15); color: var(--gold); }
+      .colista-card .cronica-tag { background: rgba(239,68,68,.12); color: var(--red); }
+      .cronica-nombre { font-weight: 700; font-size: 1rem; margin-bottom: 4px; }
+      .cronica-pts { font-size: .8rem; color: var(--muted); margin-bottom: 10px; }
+      .cronica-texto { font-size: .88rem; color: var(--silver); line-height: 1.55; }
+
+      /* ——— Ranking evolution chart ——— */
+      .chart-toggle-row {
+        display: none; align-items: center; gap: 10px; margin-top: 24px;
+        cursor: pointer; padding: 12px 16px;
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: var(--radius); transition: background .15s;
+      }
+      .chart-toggle-row:hover { background: rgba(255,255,255,.03); }
+      .chart-toggle-label { font-family: "Bebas Neue", cursive; font-size: 1.1rem; letter-spacing: .06em; flex: 1; }
+      .chart-toggle-arrow { font-size: .82rem; color: var(--muted); }
+      .chart-panel {
+        background: var(--card); border: 1px solid var(--border); border-top: none;
+        border-radius: 0 0 var(--radius) var(--radius); padding: 20px 20px 16px; display: none;
+      }
+      .chart-panel.open { display: block; }
+      .chart-empty-msg { text-align: center; padding: 28px; color: var(--muted); font-size: .88rem; }
+
+      /* ——— Simulator button & modal ——— */
+      .sim-trigger-btn {
+        background: none; border: 1px solid var(--border); border-radius: 8px;
+        padding: 6px 14px; color: var(--silver); font-family: inherit; font-size: .82rem;
+        cursor: pointer; transition: all .2s; white-space: nowrap;
+      }
+      .sim-trigger-btn:hover { border-color: rgba(240,180,41,.5); color: var(--gold); }
+      .sim-overlay {
+        position: fixed; inset: 0;
+        background: rgba(7,9,15,.85); backdrop-filter: blur(8px);
+        z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px;
+      }
+      .sim-overlay.hidden { display: none; }
+      .sim-modal {
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: 18px; padding: 30px 28px 34px; width: 100%; max-width: 460px;
+      }
+      .sim-title { font-family: "Bebas Neue", cursive; font-size: 1.8rem; letter-spacing: .06em; margin-bottom: 6px; }
+      .sim-sub { font-size: .85rem; color: var(--silver); margin-bottom: 24px; }
+      .sim-close { float: right; background: none; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; margin-top: -2px; }
+      .sim-close:hover { color: var(--text); }
+      .sim-field-label { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; display: block; margin-bottom: 6px; }
+      .sim-select {
+        width: 100%; background: var(--surface); border: 1px solid var(--border);
+        border-radius: 10px; padding: 10px 12px; color: var(--text); font-family: inherit;
+        font-size: .9rem; margin-bottom: 14px; outline: none; transition: border-color .2s;
+      }
+      .sim-select:focus { border-color: var(--gold); }
+      .sim-result {
+        margin-top: 4px; padding: 16px 18px; background: var(--surface);
+        border: 1px solid var(--border); border-radius: 10px;
+        font-size: .88rem; color: var(--silver); line-height: 1.65; display: none;
+      }
+      .sim-result p { margin-bottom: 6px; }
+      .sim-result p:last-child { margin-bottom: 0; }
+
+      /* ——— Rank name link ——— */
+      .rank-name a { color: var(--text); text-decoration: none; }
+      .rank-name a:hover { color: var(--gold); text-decoration: underline; }
+
+      /* ——— Nav user ——— */
+      .nav-user { display: none; align-items: center; gap: 8px; flex-shrink: 0; }
+      .nav-user-name { font-size: .875rem; font-weight: 600; color: var(--gold); text-decoration: none; }
+      .nav-user-name:hover { text-decoration: underline; }
+      .nav-logout {
+        background: none; border: 1px solid var(--border); border-radius: 8px;
+        padding: 5px 12px; color: var(--muted); cursor: pointer;
+        font-family: inherit; font-size: .8rem; transition: all .2s;
+      }
+      .nav-logout:hover { border-color: var(--red); color: var(--red); }
+      /* ——— Hamburguesa ——— */
+      .hamburger {
+        display: none; background: none; border: 1px solid var(--border);
+        border-radius: 8px; padding: 6px 10px; cursor: pointer;
+        color: var(--silver); font-size: 1.1rem; font-family: inherit;
+        line-height: 1; transition: all .2s; flex-shrink: 0;
+      }
+      .hamburger:hover { border-color: rgba(255,255,255,.2); color: var(--text); }
+      /* ——— Mobile user row (inside hamburger menu) ——— */
+      #mobileUserRow {
+        display: none;
+        border-top: 1px solid rgba(255,255,255,.07);
+        margin-top: 6px; padding: 10px 14px 4px;
+        align-items: center; justify-content: space-between; gap: 8px;
+      }
+      #mobileUserRow .mu-name { font-size: .9rem; font-weight: 600; color: var(--gold); }
+      #mobileUserRow .mu-logout {
+        background: none; border: 1px solid rgba(239,68,68,.3);
+        border-radius: 8px; padding: 5px 10px; color: var(--red);
+        font-family: inherit; font-size: .78rem; cursor: pointer;
+      }
+
+      /* ——— Hamburguesa mobile rules ——— */
+      @media (max-width: 640px) {
+        .hamburger  { display: block !important; }
+        .nav-user   { display: none !important; }
+        #navCta     { display: none !important; }
+        .nav-links  {
+          display: none !important;
+          position: fixed; top: 64px; left: 0; right: 0;
+          background: rgba(7,9,15,.97);
+          backdrop-filter: blur(16px);
+          flex-direction: column !important;
+          padding: 12px;
+          border-bottom: 1px solid rgba(255,255,255,.07);
+          z-index: 99;
+          gap: 0 !important;
+        }
+        .nav-links.mobile-open { display: flex !important; }
+        .nav-links a { padding: 10px 14px !important; font-size: .9rem !important; width: 100%; border-radius: 8px; }
+        #mobileUserRow { display: flex !important; }
+      }
+      @media (max-width: 600px) {
+        .hamburger  { display: block !important; }
+        .nav-user   { display: none !important; }
+        .nav-links  {
+          display: none !important;
+          position: fixed; top: 64px; left: 0; right: 0;
+          background: rgba(7,9,15,.97);
+          backdrop-filter: blur(16px);
+          flex-direction: column !important;
+          padding: 12px;
+          border-bottom: 1px solid rgba(255,255,255,.07);
+          z-index: 99;
+          gap: 0 !important;
+        }
+        .nav-links.mobile-open { display: flex !important; }
+        .nav-links a { padding: 10px 14px !important; font-size: .9rem !important; width: 100%; border-radius: 8px; }
+        #mobileUserRow { display: flex !important; }
+      }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  </head>
+
+  <body>
+    <!-- NAV -->
+    <nav>
+
+      <a href="index.html" style="text-decoration:none"><div class="nav-logo">⚽ PORRA <span>2026</span></div></a>
+      <div class="nav-links" id="navLinks">
+        <a href="index.html" class="active">Ranking</a>
+        <a href="mis-picks.html">Mis Apuestas</a>
+        <a href="bracket.html">Cuadro</a>
+        <a href="reglas.html">Reglas</a>
+      </div>
+      <a href="mis-picks.html" class="nav-cta" id="navCta">Hacer Apuestas →</a>
+      <div class="nav-user" id="navUser" style="display:none">
+        <a href="#" id="navUserName" class="nav-user-name"></a>
+        <button class="nav-logout" onclick="doLogout()">Salir</button>
+      </div>
+      <button class="hamburger" id="hamburger" onclick="toggleMenu()" aria-label="Menú">☰</button>
+    </nav>
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-eyebrow">
+        <div class="live-dot"></div>
+        <span>EN VIVO · Mundial 2026</span>
+      </div>
+      <h1>PORRA MUNDIAL 2026</h1>
+      <p class="hero-sub">USA · CANADA · MEXICO · 11 JUN – 19 JUL 2026</p>
+      <div class="stats-strip" id="statsStrip">
+        <div class="stat-pill">
+          <span class="stat-icon">⚽</span>
+          <div>
+            <div class="stat-value" id="statPlayed">—</div>
+            <div class="stat-label">Partidos jugados</div>
+          </div>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-icon">👥</span>
+          <div>
+            <div class="stat-value" id="statParts">—</div>
+            <div class="stat-label">Participantes</div>
+          </div>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-icon">🔥</span>
+          <div>
+            <div class="stat-value" id="statLive">—</div>
+            <div class="stat-label">En juego</div>
+          </div>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-icon">📅</span>
+          <div>
+            <div class="stat-value" id="statNext">—</div>
+            <div class="stat-label">Próximo partido</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LA CRÓNICA DEL DÍA -->
+    <div class="section" id="cronicaSection" style="display:none">
+      <div class="section-header">
+        <div class="section-title">🎭 La Crónica del Día</div>
+        <div class="section-meta">El veredicto inapelable</div>
+      </div>
+      <div class="cronica-grid" id="cronicaGrid"></div>
+    </div>
+
+    <!-- RANKING -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">🏅 Clasificación</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button class="sim-trigger-btn" onclick="openSimulator()">🎯 ¿Puedo alcanzar a…?</button>
+          <div class="updated-badge" id="updatedBadge">Actualizando...</div>
+        </div>
+      </div>
+
+      <!-- Podio top 3 -->
+      <div class="podium" id="podium">
+        <div class="skeleton" style="height: 160px; border-radius: 14px"></div>
+        <div class="skeleton" style="height: 160px; border-radius: 14px"></div>
+        <div class="skeleton" style="height: 160px; border-radius: 14px"></div>
+      </div>
+
+      <!-- Tabla completa -->
+      <div class="table-wrap" id="rankingTableWrap">
+        <div class="skeleton skeleton-row"></div>
+        <div class="skeleton skeleton-row"></div>
+        <div class="skeleton skeleton-row"></div>
+        <div class="skeleton skeleton-row"></div>
+        <div class="skeleton skeleton-row"></div>
+      </div>
+
+      <!-- GRÁFICO EVOLUCIÓN (colapsable) -->
+      <div class="chart-toggle-row" id="chartToggleRow" onclick="toggleChart()">
+        <span class="chart-toggle-label">📈 Evolución del Ranking</span>
+        <span class="chart-toggle-arrow" id="chartArrow">▼ Ver</span>
+      </div>
+      <div class="chart-panel" id="chartPanel">
+        <div class="chart-empty-msg" id="chartEmptyMsg" style="display:none">
+          El gráfico se irá llenando conforme avance el torneo ⏳
+        </div>
+        <div style="position:relative;height:260px" id="chartCanvasWrap">
+          <canvas id="rankingChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- PARTIDOS EN JUEGO -->
+    <div class="section" id="liveSection" style="display: none">
+      <div class="section-header">
+        <div class="section-title">🟢 En Juego</div>
+      </div>
+      <div class="matches-grid" id="liveMatches"></div>
+    </div>
+
+    <!-- ÚLTIMOS RESULTADOS -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">📋 Últimos Resultados</div>
+      </div>
+      <div class="matches-grid" id="recentMatches">
+        <div class="skeleton" style="height: 110px; border-radius: 14px"></div>
+        <div class="skeleton" style="height: 110px; border-radius: 14px"></div>
+        <div class="skeleton" style="height: 110px; border-radius: 14px"></div>
+      </div>
+    </div>
+
+    <!-- PRÓXIMOS PARTIDOS -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">📅 Próximos Partidos</div>
+      </div>
+      <div class="matches-grid" id="upcomingMatches">
+        <div class="skeleton" style="height: 110px; border-radius: 14px"></div>
+        <div class="skeleton" style="height: 110px; border-radius: 14px"></div>
+        <div class="skeleton" style="height: 110px; border-radius: 14px"></div>
+      </div>
+    </div>
+
+    <footer>
+      Porra Mundial 2026
+    </footer>
+
+    <!-- SIMULADOR MODAL -->
+    <div class="sim-overlay hidden" id="simOverlay">
+      <div class="sim-modal">
+        <button class="sim-close" onclick="closeSimulator()">✕</button>
+        <div class="sim-title">🎯 Simulador de Puntos</div>
+        <div class="sim-sub">Compara a dos jugadores y ve cuánto pueden acortar hoy</div>
+        <label class="sim-field-label">Jugador A</label>
+        <select class="sim-select" id="simP1" onchange="runSimulator()">
+          <option value="">— Selecciona un jugador —</option>
+        </select>
+        <label class="sim-field-label">Jugador B (objetivo)</label>
+        <select class="sim-select" id="simP2" onchange="runSimulator()">
+          <option value="">— Selecciona un jugador —</option>
+        </select>
+        <div class="sim-result" id="simResult"></div>
+      </div>
+    </div>
+
+    <script>
+      // =========================================================
+      //  CONFIGURACIÓN — cambia esta URL por la de tu Apps Script
+      // =========================================================
+      const SCRIPT_URL =
+        "https://script.google.com/macros/s/AKfycbxmreAnz7xl9COTf3a_g1rczwNHerPMmSGst1GLPCC5EVMCONEB6xlkdMsQ-ZejVA-VqA/exec";
+      // =========================================================
+
+      const MEDALS = ["🥇", "🥈", "🥉"];
+
+      async function api(params) {
+        const url = SCRIPT_URL + "?" + new URLSearchParams(params);
+        const res = await fetch(url);
+        return res.json();
+      }
+
+      function fmt(date) {
+        if (!date) return "—";
+        const d = new Date(date);
+        return (
+          d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" }) +
+          " · " +
+          d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
+        );
+      }
+
+      function formatTimeAgo(date) {
+        if (!date) return "";
+        const diff = (Date.now() - new Date(date)) / 1000;
+        if (diff < 60) return "hace " + Math.round(diff) + "s";
+        if (diff < 3600) return "hace " + Math.round(diff / 60) + "min";
+        return "hace " + Math.round(diff / 3600) + "h";
+      }
+
+      // ——— Stats ———
+      async function loadStats() {
+        try {
+          const { played, upcoming, live, leader, updated } = await api({
+            action: "getStats",
+          });
+          document.getElementById("statPlayed").textContent = played ?? "—";
+          document.getElementById("statLive").textContent =
+            live > 0 ? live + " 🔴" : "0";
+          document.getElementById("statNext").textContent = upcoming ?? "—";
+          if (updated)
+            document.getElementById("updatedBadge").textContent =
+              "Actualizado " + formatTimeAgo(updated);
+        } catch (e) {
+          console.warn("Stats error:", e);
+        }
+      }
+
+      // ——— Ranking ———
+      async function loadRanking() {
+        try {
+          const { ranking, updated } = await api({ action: "getRanking" });
+          const { participants } = await api({ action: "getStats" });
+          document.getElementById("statParts").textContent =
+            participants ?? ranking.length;
+
+          if (!ranking || ranking.length === 0) {
+            document.getElementById("podium").innerHTML =
+              `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🏆</div><p>Aún no hay participantes</p></div>`;
+            document.getElementById("rankingTableWrap").innerHTML = "";
+            return;
+          }
+
+          _rankingData = ranking;
+          const maxPts = ranking[0]?.total || 1;
+
+          // —— Podio ——
+          const top3 = ranking.slice(0, 3);
+          let podiumHTML = "";
+          // Order: 2nd, 1st, 3rd visually
+          const podiumOrder =
+            top3.length >= 3 ? [1, 0, 2] : top3.map((_, i) => i);
+          for (const idx of podiumOrder) {
+            const p = top3[idx];
+            if (!p) {
+              podiumHTML += "<div></div>";
+              continue;
+            }
+            podiumHTML += `
+          <div class="podium-card pos-${idx + 1}">
+            <div class="podium-medal">${MEDALS[idx] || "🏅"}</div>
+            <div class="podium-name">${escHtml(p.nombre)}</div>
+            <div class="podium-pts">${p.total || 0}</div>
+            <div class="podium-label">puntos</div>
+            <div class="podium-breakdown">
+              <span class="pts-badge">⚽ ${p.pts_grupos || 0} grupos</span>
+              <span class="pts-badge">⚡ ${p.pts_eliminatorias || 0} elim.</span>
+              <span class="pts-badge">🌟 ${p.pts_especiales || 0} esp.</span>
+            </div>
+          </div>`;
+          }
+          document.getElementById("podium").innerHTML = podiumHTML;
+
+          // —— Tabla ——
+          let tableHTML = `
+        <table class="ranking-table">
+          <thead><tr>
+            <th>#</th>
+            <th></th>
+            <th>Participante</th>
+            <th>Progreso</th>
+            <th>Puntos</th>
+          </tr></thead>
+          <tbody>`;
+
+          for (const p of ranking) {
+            const bar = Math.round(((p.total || 0) / maxPts) * 100);
+            const medal = p.pos <= 3 ? MEDALS[p.pos - 1] : "";
+            tableHTML += `
+          <tr>
+            <td class="rank-pos">${p.pos}</td>
+            <td class="rank-medal">${medal}</td>
+            <td class="rank-name"><a href="perfil.html?pid=${escHtml(p.participante_id)}">${escHtml(p.nombre)}</a></td>
+            <td class="rank-bar-wrap">
+              <div class="rank-bar">
+                <div class="rank-bar-fill" style="width:${bar}%"></div>
+              </div>
+            </td>
+            <td class="rank-pts-cell">
+              <div class="rank-total">${p.total || 0}</div>
+              <div class="rank-breakdown">${p.pts_grupos || 0}G · ${p.pts_eliminatorias || 0}E · ${p.pts_especiales || 0}★</div>
+            </td>
+          </tr>`;
+          }
+          tableHTML += "</tbody></table>";
+          document.getElementById("rankingTableWrap").innerHTML = tableHTML;
+
+          if (updated)
+            document.getElementById("updatedBadge").textContent =
+              "Actualizado " + formatTimeAgo(updated);
+        } catch (e) {
+          console.warn("Ranking error:", e);
+        }
+      }
+
+      // ——— Matches ———
+      async function loadMatches() {
+        try {
+          const { matches } = await api({ action: "getMatches" });
+          if (!matches) return;
+
+          _allMatchesData = matches;
+          const now = new Date();
+          const live = matches.filter(
+            (m) => m.estado === "IN_PLAY" || m.estado === "PAUSED",
+          );
+          const finished = matches
+            .filter((m) => m.estado === "FINISHED")
+            .sort((a, b) => new Date(b.kickoff) - new Date(a.kickoff))
+            .slice(0, 6);
+          const upcoming = matches
+            .filter((m) => m.estado === "SCHEDULED" || m.estado === "TIMED")
+            .sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff))
+            .slice(0, 6);
+
+          // Live
+          const liveSection = document.getElementById("liveSection");
+          if (live.length > 0) {
+            liveSection.style.display = "block";
+            document.getElementById("liveMatches").innerHTML = live
+              .map(matchCard)
+              .join("");
+          }
+
+          // Finished
+          const recentEl = document.getElementById("recentMatches");
+          recentEl.innerHTML =
+            finished.length > 0
+              ? finished.map(matchCard).join("")
+              : `<div class="empty-state"><div class="icon">📋</div><p>Aún no hay resultados disponibles</p></div>`;
+
+          // Upcoming
+          const upcomingEl = document.getElementById("upcomingMatches");
+          upcomingEl.innerHTML =
+            upcoming.length > 0
+              ? upcoming.map(matchCard).join("")
+              : `<div class="empty-state"><div class="icon">📅</div><p>Cargando calendario...</p></div>`;
+        } catch (e) {
+          console.warn("Matches error:", e);
+        }
+      }
+
+      function matchCard(m) {
+        const isLive = m.estado === "IN_PLAY" || m.estado === "PAUSED";
+        const isDone = m.estado === "FINISHED";
+        const hasScore = isDone || isLive;
+
+        const statusLabel = isLive
+          ? "🔴 En Juego"
+          : isDone
+            ? "Final"
+            : fmt(m.kickoff);
+        const statusClass = isLive
+          ? "badge-live"
+          : isDone
+            ? "badge-done"
+            : "badge-soon";
+
+        const grupoPart = m.grupo ? `Grupo ${m.grupo}` : phaseLabel(m.fase);
+
+        return `
+      <div class="match-card ${isLive ? "live" : ""}">
+        <div class="match-meta">
+          <span class="match-group">${grupoPart}</span>
+          <span class="match-status-badge ${statusClass}">${statusLabel}</span>
+        </div>
+        <div class="match-teams">
+          <div class="team">
+            <div class="team-flag">${flagEmoji(m.equipo_local)}</div>
+            <div class="team-name">${escHtml(m.equipo_local || "?")}</div>
+          </div>
+          <div class="match-score">
+            ${
+              hasScore
+                ? `<div class="score-display">${m.goles_local ?? "?"} – ${m.goles_visitante ?? "?"}</div>`
+                : `<div class="score-vs">vs</div>`
+            }
+          </div>
+          <div class="team">
+            <div class="team-flag">${flagEmoji(m.equipo_visitante)}</div>
+            <div class="team-name">${escHtml(m.equipo_visitante || "?")}</div>
+          </div>
+        </div>
+        ${!hasScore ? `<div class="match-time">${fmt(m.kickoff)}</div>` : ""}
+      </div>`;
+      }
+
+      function phaseLabel(fase) {
+        const labels = {
+          GROUP_STAGE: "Fase de Grupos",
+          LAST_32: "Ronda de 32",
+          LAST_16: "Octavos",
+          QUARTER_FINALS: "Cuartos",
+          SEMI_FINALS: "Semis",
+          THIRD_PLACE: "3er Puesto",
+          FINAL: "Final",
+        };
+        return labels[fase] || fase || "";
+      }
+
+      // Map team short names to flag emojis — expandir con todos los equipos
+      const FLAGS = {
+        // Europa
+        'Spain':'🇪🇸','Germany':'🇩🇪','France':'🇫🇷','Portugal':'🇵🇹',
+        'England':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','Netherlands':'🇳🇱','Belgium':'🇧🇪','Italy':'🇮🇹',
+        'Croatia':'🇭🇷','Denmark':'🇩🇰','Switzerland':'🇨🇭','Poland':'🇵🇱',
+        'Serbia':'🇷🇸','Austria':'🇦🇹','Turkey':'🇹🇷','Türkiye':'🇹🇷',
+        'Scotland':'🏴󠁧󠁢󠁳󠁣󠁴󠁿','Hungary':'🇭🇺','Slovakia':'🇸🇰','Slovenia':'🇸🇮',
+        'Romania':'🇷🇴','Albania':'🇦🇱','Ukraine':'🇺🇦','Czech Republic':'🇨🇿',
+        'Czechia':'🇨🇿','Greece':'🇬🇷','Wales':'🏴󠁧󠁢󠁷󠁬󠁳󠁿','Northern Ireland':'🇬🇧',
+        // Sudamérica
+        'Argentina':'🇦🇷','Brazil':'🇧🇷','Uruguay':'🇺🇾','Colombia':'🇨🇴',
+        'Ecuador':'🇪🇨','Chile':'🇨🇱','Venezuela':'🇻🇪','Paraguay':'🇵🇾',
+        'Bolivia':'🇧🇴','Peru':'🇵🇪',
+        // Norteamérica / CONCACAF
+        'USA':'🇺🇸','United States':'🇺🇸','Mexico':'🇲🇽','México':'🇲🇽',
+        'Canada':'🇨🇦','Panama':'🇵🇦','Panamá':'🇵🇦','Costa Rica':'🇨🇷',
+        'Jamaica':'🇯🇲','Honduras':'🇭🇳','El Salvador':'🇸🇻',
+        'Trinidad and Tobago':'🇹🇹','Guatemala':'🇬🇹','Cuba':'🇨🇺',
+        // Asia
+        'Japan':'🇯🇵','South Korea':'🇰🇷','Korea Republic':'🇰🇷','Iran':'🇮🇷',
+        'Saudi Arabia':'🇸🇦','Australia':'🇦🇺','Qatar':'🇶🇦','Iraq':'🇮🇶',
+        'Jordan':'🇯🇴','Uzbekistan':'🇺🇿','Oman':'🇴🇲','Bahrain':'🇧🇭',
+        'China':'🇨🇳','China PR':'🇨🇳','Indonesia':'🇮🇩','Thailand':'🇹🇭',
+        'Vietnam':'🇻🇳','United Arab Emirates':'🇦🇪','UAE':'🇦🇪',
+        // África
+        'Morocco':'🇲🇦','Senegal':'🇸🇳','Nigeria':'🇳🇬','Cameroon':'🇨🇲',
+        'Egypt':'🇪🇬','Ghana':'🇬🇭',"Côte d'Ivoire":'🇨🇮','Ivory Coast':'🇨🇮',
+        'Mali':'🇲🇱','DR Congo':'🇨🇩','Congo DR':'🇨🇩','Algeria':'🇩🇿',
+        'Tunisia':'🇹🇳','South Africa':'🇿🇦','Tanzania':'🇹🇿','Zimbabwe':'🇿🇼',
+        'Cape Verde':'🇨🇻','Mozambique':'🇲🇿','Zambia':'🇿🇲','Angola':'🇦🇴',
+        // Oceanía
+        'New Zealand':'🇳🇿',
+      };
+      function flagEmoji(name) {
+        if (!name) return "🏳️";
+        return FLAGS[name] || "🏳️";
+      }
+
+      function escHtml(s) {
+        if (!s) return "";
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      // ——— Global state ———
+      let _rankingData = [];
+      let _allMatchesData = [];
+      let _chartInstance = null;
+      let _firstLoad = true;
+
+      // ——— La Crónica del Día ———
+      async function loadDailyComment() {
+        try {
+          const { lider, colista } = await api({ action: 'getDailyComment' });
+          if (!lider && !colista) return;
+          let html = '';
+          if (lider) html += `<div class="cronica-card lider-card">
+            <div class="cronica-tag">👑 Líder</div>
+            <div class="cronica-nombre">${lider.nombre}</div>
+            <div class="cronica-pts">${lider.total} puntos · #${lider.pos}</div>
+            <div class="cronica-texto">${escHtml(lider.comment)}</div>
+          </div>`;
+          if (colista) html += `<div class="cronica-card colista-card">
+            <div class="cronica-tag">😬 Colista</div>
+            <div class="cronica-nombre">${colista.nombre}</div>
+            <div class="cronica-pts">${colista.total} puntos · #${colista.pos}</div>
+            <div class="cronica-texto">${escHtml(colista.comment)}</div>
+          </div>`;
+          document.getElementById('cronicaGrid').innerHTML = html;
+          document.getElementById('cronicaSection').style.display = 'block';
+        } catch(e) { console.warn('Crónica error:', e); }
+      }
+
+      // ——— Ranking evolution chart ———
+      function toggleChart() {
+        const panel = document.getElementById('chartPanel');
+        const arrow = document.getElementById('chartArrow');
+        const isOpen = panel.classList.contains('open');
+        panel.classList.toggle('open', !isOpen);
+        arrow.textContent = isOpen ? '▼ Ver' : '▲ Ocultar';
+        if (!isOpen && _chartInstance) _chartInstance.resize();
+      }
+
+      async function loadHistory() {
+        try {
+          const { byPid } = await api({ action: 'getHistory' });
+          const pids = Object.keys(byPid || {});
+          if (!pids.length) return;
+          document.getElementById('chartToggleRow').style.display = 'flex';
+          const top5 = pids
+            .map(id => ({ id, nombre: byPid[id].nombre, data: byPid[id].data }))
+            .sort((a,b) => {
+              const la = a.data[a.data.length-1]?.total || 0;
+              const lb = b.data[b.data.length-1]?.total || 0;
+              return lb - la;
+            }).slice(0, 6);
+          const allDates = [...new Set(top5.flatMap(p => p.data.map(d => String(d.ts).slice(0,10))))].sort();
+          if (allDates.length < 2) {
+            document.getElementById('chartEmptyMsg').style.display = 'block';
+            document.getElementById('chartCanvasWrap').style.display = 'none';
+            return;
+          }
+          const COLORS = ['#f0b429','#22c55e','#3b82f6','#a855f7','#ef4444','#f97316'];
+          const ctx = document.getElementById('rankingChart').getContext('2d');
+          if (_chartInstance) _chartInstance.destroy();
+          _chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: allDates.map(d => new Date(d).toLocaleDateString('es-ES',{day:'2-digit',month:'short'})),
+              datasets: top5.map((p, i) => ({
+                label: p.nombre,
+                data: allDates.map(date => {
+                  const snap = p.data.filter(d => String(d.ts).slice(0,10) <= date).pop();
+                  return snap ? snap.pos : null;
+                }),
+                borderColor: COLORS[i % COLORS.length],
+                backgroundColor: 'transparent',
+                tension: 0.4, pointRadius: 3, spanGaps: true
+              }))
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              interaction: { mode: 'index', intersect: false },
+              scales: {
+                y: { reverse: true, min: 1, ticks: { stepSize: 1, color: '#64748b', callback: v => '#' + v }, grid: { color: 'rgba(255,255,255,.05)' } },
+                x: { ticks: { color: '#64748b', maxRotation: 0 }, grid: { color: 'rgba(255,255,255,.05)' } }
+              },
+              plugins: {
+                legend: { labels: { color: '#94a3b8', boxWidth: 10, padding: 14, font: { size: 11 } } },
+                tooltip: { backgroundColor: '#141929', borderColor: 'rgba(255,255,255,.07)', borderWidth: 1, titleColor: '#f1f5f9', bodyColor: '#94a3b8', callbacks: { label: ctx => ' ' + ctx.dataset.label + ': #' + ctx.raw } }
+              }
+            }
+          });
+        } catch(e) { console.warn('History error:', e); }
+      }
+
+      // ——— Simulador ———
+      function openSimulator() {
+        document.getElementById('simOverlay').classList.remove('hidden');
+        populateSimSelects();
+        document.getElementById('simResult').style.display = 'none';
+      }
+      function closeSimulator() { document.getElementById('simOverlay').classList.add('hidden'); }
+      document.getElementById('simOverlay').addEventListener('click', e => {
+        if (e.target === document.getElementById('simOverlay')) closeSimulator();
+      });
+      function populateSimSelects() {
+        if (!_rankingData.length) return;
+        const opts = _rankingData.map(r =>
+          `<option value="${escHtml(r.participante_id)}" data-pts="${r.total||0}" data-nombre="${escHtml(r.nombre)}">#${r.pos} ${escHtml(r.nombre)} (${r.total||0} pts)</option>`
+        ).join('');
+        const base = '<option value="">— Selecciona —</option>';
+        document.getElementById('simP1').innerHTML = base + opts;
+        document.getElementById('simP2').innerHTML = base + opts;
+      }
+      function runSimulator() {
+        const s1 = document.getElementById('simP1');
+        const s2 = document.getElementById('simP2');
+        if (!s1.value || !s2.value || s1.value === s2.value) {
+          document.getElementById('simResult').style.display = 'none'; return;
+        }
+        const pts1 = parseInt(s1.options[s1.selectedIndex].dataset.pts)||0;
+        const pts2 = parseInt(s2.options[s2.selectedIndex].dataset.pts)||0;
+        const n1   = s1.options[s1.selectedIndex].dataset.nombre;
+        const n2   = s2.options[s2.selectedIndex].dataset.nombre;
+        const diff = Math.abs(pts1 - pts2);
+        const today = new Date().toISOString().slice(0,10);
+        const pending = _allMatchesData.filter(m => m.kickoff?.slice(0,10) === today && (m.estado==='SCHEDULED'||m.estado==='TIMED'));
+        const maxPts = pending.reduce((s,m) => s + (m.fase==='GROUP_STAGE'?4:7), 0);
+        let html = '';
+        if (pts1 === pts2) {
+          html = `<p>🤝 ¡Empate! Ambos tienen <strong>${pts1} puntos</strong>. Hoy puede decidirse todo.</p>`;
+        } else {
+          const [ahead, behind, ptsA, ptsB] = pts1 > pts2 ? [n1,n2,pts1,pts2] : [n2,n1,pts2,pts1];
+          html += `<p>🏁 <strong>${ahead}</strong> lleva <strong>${diff} pts de ventaja</strong> sobre <strong>${behind}</strong> (${ptsA} vs ${ptsB}).</p>`;
+          if (pending.length > 0) {
+            html += `<p>📅 Hoy quedan <strong>${pending.length} partido${pending.length!==1?'s':''}</strong> → máximo posible: <strong>${maxPts} pts</strong> acertando todo exacto.</p>`;
+            html += diff <= maxPts
+              ? `<p style="color:var(--green)">✅ Matemáticamente alcanzable hoy.</p>`
+              : `<p style="color:var(--muted)">⏳ Hoy no alcanza (faltan ${diff - maxPts} pts). Quedan más jornadas.</p>`;
+          } else {
+            html += `<p style="color:var(--muted)">No hay más partidos hoy. Mañana puede cambiar el panorama.</p>`;
+          }
+        }
+        const res = document.getElementById('simResult');
+        res.innerHTML = html; res.style.display = 'block';
+      }
+
+      // ——— Auto-refresh ———
+      async function refresh() {
+        await Promise.all([loadStats(), loadRanking(), loadMatches()]);
+        if (_firstLoad) {
+          _firstLoad = false;
+          loadDailyComment();
+          loadHistory();
+        }
+      }
+
+      refresh();
+      setInterval(refresh, 60_000); // cada 60 segundos
+
+      // ─── Menú hamburguesa ───
+      function toggleMenu() {
+        var links = document.getElementById('navLinks');
+        var btn   = document.getElementById('hamburger');
+        if (!links) return;
+        links.classList.toggle('mobile-open');
+        btn.textContent = links.classList.contains('mobile-open') ? '✕' : '☰';
+      }
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('nav')) {
+          var links = document.getElementById('navLinks');
+          if (links) links.classList.remove('mobile-open');
+          var btn = document.getElementById('hamburger');
+          if (btn) btn.textContent = '☰';
+        }
+      });
+      // ─── Sesión compartida (todas las páginas) ───
+      function doLogout() {
+        localStorage.removeItem('porra2026_user');
+        window.location.href = 'index.html';
+      }
+      function initSession() {
+        var raw = localStorage.getItem('porra2026_user');
+        if (!raw) return;
+        try {
+          var u = JSON.parse(raw);
+          if (!u || !u.id || !u.nombre) return;
+          var navUser = document.getElementById('navUser');
+          if (navUser) {
+            navUser.style.display = 'flex';
+            var nameEl = document.getElementById('navUserName');
+            if (nameEl) {
+              nameEl.textContent = '\uD83D\uDC4B ' + u.nombre;
+              nameEl.href = 'perfil.html?pid=' + encodeURIComponent(u.id);
+            }
+          }
+          var links = document.getElementById('navLinks');
+          if (links && !document.getElementById('mobileUserRow')) {
+            var row = document.createElement('div');
+            row.id = 'mobileUserRow';
+            row.innerHTML = '<span class="mu-name">\uD83D\uDC4B ' + u.nombre + '</span>'
+              + '<button class="mu-logout" onclick="doLogout()">Salir</button>';
+            links.appendChild(row);
+          }
+        } catch(_) {}
+      }
+      initSession();
+</script>
+  </body>
+</html>
