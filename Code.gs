@@ -284,47 +284,110 @@ function getGroupConsensus(grupo) {
 //  PREDICCIONES ESPECIALES
 // ─────────────────────────────────────────────────────────────
 
-function saveSpecialPredictions(data) {
-  const sheet    = getSheet('Predicciones_Especiales');
-  const rows     = sheet.getDataRange().getValues();
-  const deadline = PropertiesService.getScriptProperties().getProperty('SPECIALS_DEADLINE');
-  if (deadline && new Date() >= new Date(deadline)) {
-    return { error: 'Las predicciones especiales están cerradas' };
+// Asegura que la columna equipo_estrella existe en la hoja
+function ensureEstrellaColunn() {
+  const sheet   = getSheet('Predicciones_Especiales');
+  const lastCol = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  if (headers.includes('equipo_estrella')) return;
+
+  // Insertar antes de timestamp si existe, si no al final
+  const tsIdx = headers.indexOf('timestamp');
+  if (tsIdx >= 0) {
+    sheet.insertColumnBefore(tsIdx + 1);
+    sheet.getRange(1, tsIdx + 1).setValue('equipo_estrella');
+  } else {
+    sheet.getRange(1, lastCol + 1).setValue('equipo_estrella');
   }
+}
+
+function getSpecialsDeadlines() {
+  const props = PropertiesService.getScriptProperties();
+  // Early: estrella, goleador, sorpresa — cierra 1h antes del primer partido
+  const earlyStr = props.getProperty('SPECIALS_DEADLINE_EARLY') || '2026-06-11T18:00:00Z';
+  // Late:  campeon, finalista, semi1, semi2 — cierra 1h antes de octavos
+  const lateStr  = props.getProperty('SPECIALS_DEADLINE_LATE')  || '2026-06-27T17:00:00Z';
+  const now = new Date();
+  return {
+    early:     earlyStr,
+    late:      lateStr,
+    earlyOpen: now < new Date(earlyStr),
+    lateOpen:  now < new Date(lateStr)
+  };
+}
+
+function saveSpecialPredictions(data) {
+  ensureEstrellaColunn();
+
+  const sheet = getSheet('Predicciones_Especiales');
+  const rows  = sheet.getDataRange().getValues();
+  const hdr   = rows[0];
+  const dl    = getSpecialsDeadlines();
+  const now   = new Date();
+
+  if (!dl.earlyOpen && !dl.lateOpen) {
+    return { error: 'Todas las predicciones especiales están cerradas' };
+  }
+
+  // Función helper para actualizar una celda por nombre de columna
+  const setCell = (rowNum, col, val) => {
+    const c = hdr.indexOf(col);
+    if (c >= 0) sheet.getRange(rowNum, c + 1).setValue(val);
+  };
 
   let existingRow = -1;
   for (let i = 1; i < rows.length; i++) {
     if (String(rows[i][0]) === String(data.pid)) { existingRow = i + 1; break; }
   }
 
-  const row = [
-    data.pid,
-    data.campeon || '',
-    data.finalista || '',
-    data.semi1 || '',
-    data.semi2 || '',
-    data.goleador || '',
-    data.sorpresa || '',
-    data.equipo_estrella || '',
-    new Date().toISOString()
-  ];
-  if (existingRow > 0) sheet.getRange(existingRow, 1, 1, 9).setValues([row]);
-  else sheet.appendRow(row);
-  return { success: true };
+  if (existingRow < 0) {
+    // Fila nueva — guardar lo que esté abierto, vacío lo que esté cerrado
+    const row = [
+      data.pid,
+      dl.lateOpen  ? (data.campeon          || '') : (rows.find(r => String(r[0]) === String(data.pid))?.[hdr.indexOf('campeon')]   || ''),
+      dl.lateOpen  ? (data.finalista         || '') : '',
+      dl.lateOpen  ? (data.semi1             || '') : '',
+      dl.lateOpen  ? (data.semi2             || '') : '',
+      dl.earlyOpen ? (data.goleador          || '') : '',
+      dl.earlyOpen ? (data.sorpresa          || '') : '',
+      dl.earlyOpen ? (data.equipo_estrella   || '') : '',
+      now.toISOString()
+    ];
+    sheet.appendRow(row);
+  } else {
+    // Fila existente — solo actualizar el grupo que esté abierto
+    if (dl.lateOpen) {
+      setCell(existingRow, 'campeon',   data.campeon   || '');
+      setCell(existingRow, 'finalista', data.finalista || '');
+      setCell(existingRow, 'semi1',     data.semi1     || '');
+      setCell(existingRow, 'semi2',     data.semi2     || '');
+    }
+    if (dl.earlyOpen) {
+      setCell(existingRow, 'goleador',        data.goleador        || '');
+      setCell(existingRow, 'sorpresa',        data.sorpresa        || '');
+      setCell(existingRow, 'equipo_estrella', data.equipo_estrella || '');
+    }
+    setCell(existingRow, 'timestamp', now.toISOString());
+  }
+
+  return { success: true, deadlines: dl };
 }
 
 function getSpecials(pid) {
+  ensureEstrellaColunn();
   const sheet   = getSheet('Predicciones_Especiales');
   const rows    = sheet.getDataRange().getValues();
   const headers = rows[0];
+  const dl      = getSpecialsDeadlines();
+
   for (let i = 1; i < rows.length; i++) {
     if (String(rows[i][0]) === String(pid)) {
       const p = {};
       headers.forEach((h, j) => p[h] = rows[i][j]);
-      return { pred: p };
+      return { pred: p, deadlines: dl };
     }
   }
-  return { pred: null };
+  return { pred: null, deadlines: dl };
 }
 
 // ─────────────────────────────────────────────────────────────

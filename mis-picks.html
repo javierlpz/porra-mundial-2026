@@ -409,6 +409,7 @@
       let lockStatus = {};
       let myPreds = {};
       let mySpecials = {};
+      let myDeadlines = { earlyOpen: true, lateOpen: true };
       let currentGroup = "A";
       let dirtyPreds = new Set();
 
@@ -533,8 +534,9 @@
 
       async function loadMySpecials() {
         try {
-          const { pred } = await api({ action: "getSpecials", pid: user.id });
-          mySpecials = pred || {};
+          const res = await api({ action: "getSpecials", pid: user.id });
+          mySpecials  = res.pred || {};
+          myDeadlines = res.deadlines || { earlyOpen: true, lateOpen: true };
         } catch(e) { console.warn("loadMySpecials error:", e); }
       }
 
@@ -680,52 +682,96 @@
         var el = document.getElementById("specialsContent");
         if (!el) return;
 
-        var SPECIAL_ITEMS = [
-          { key:"campeon",   icon:"🏆", title:"Campeón del Mundial",  pts:"10 pts" },
-          { key:"finalista", icon:"🥈", title:"Finalista",            pts:"5 pts"  },
-          { key:"semi1",     icon:"4️⃣", title:"Semifinalista 1",      pts:"4 pts"  },
-          { key:"semi2",     icon:"4️⃣", title:"Semifinalista 2",      pts:"4 pts"  },
-          { key:"goleador",  icon:"👟", title:"Máximo Goleador",       pts:"8 pts"  },
-          { key:"sorpresa",  icon:"💥", title:"Sorpresa del Torneo",   pts:"6 pts"  }
-        ];
+        var earlyOpen = myDeadlines.earlyOpen !== false;
+        var lateOpen  = myDeadlines.lateOpen  !== false;
+
         var FAVORITES_SP = [
           "Brazil","Argentina","France","England","Spain","Germany",
           "Portugal","Netherlands","Belgium","Uruguay","Italy","Croatia","Colombia","USA"
         ];
 
-        var html = '<div style="margin-bottom:20px;padding:16px 18px;background:rgba(240,180,41,.08);border:1px solid rgba(240,180,41,.2);border-radius:12px;">'
-          + '<p style="font-size:.88rem;color:var(--gold);font-weight:600;margin-bottom:4px">⏰ Cierre: 1h antes del primer partido</p>'
-          + '<p style="font-size:.8rem;color:var(--muted)">Se hacen una vez y no se pueden cambiar tras el cierre.</p>'
-          + '</div><div class="specials-grid">';
-
-        SPECIAL_ITEMS.forEach(function(item) {
-          var teams = item.key === "sorpresa" ? FAVORITES_SP : ALL_TEAMS;
+        function makeSelect(id, teams, currentVal, disabled) {
+          var dis = disabled ? ' disabled style="opacity:.45;cursor:not-allowed"' : '';
           var opts = '<option value="">— Elige —</option>';
           teams.forEach(function(t) {
-            var sel = mySpecials[item.key] === t ? " selected" : "";
+            var sel = currentVal === t ? ' selected' : '';
             opts += '<option value="' + esc(t) + '"' + sel + '>' + esc(t) + '</option>';
           });
+          return '<select class="special-select" id="' + id + '"' + dis + '>' + opts + '</select>';
+        }
+
+        function sectionBanner(open, earlyDate, label) {
+          if (open) {
+            return '<div style="margin-bottom:16px;padding:14px 16px;background:rgba(240,180,41,.08);border:1px solid rgba(240,180,41,.2);border-radius:12px">'
+              + '<p style="font-size:.85rem;color:var(--gold);font-weight:600;margin-bottom:2px">⏰ ' + label + '</p>'
+              + '<p style="font-size:.78rem;color:var(--muted)">Puedes cambiarla hasta esa fecha.</p>'
+              + '</div>';
+          } else {
+            return '<div style="margin-bottom:16px;padding:14px 16px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:12px">'
+              + '<p style="font-size:.85rem;color:var(--red);font-weight:600">🔒 Sección cerrada</p>'
+              + '<p style="font-size:.78rem;color:var(--muted)">Ya no se puede modificar.</p>'
+              + '</div>';
+          }
+        }
+
+        var html = '';
+
+        // ── Sección TARDÍA: Campeón, Finalista, Semis (cierra antes de octavos) ──
+        html += '<div style="margin-bottom:28px">'
+          + '<div style="font-family:\'Bebas Neue\',cursive;font-size:1.3rem;letter-spacing:.06em;margin-bottom:12px;color:var(--gold)">🏆 Fase eliminatoria</div>'
+          + sectionBanner(lateOpen, myDeadlines.late, 'Cierra 1h antes de octavos de final (~27 jun)')
+          + '<div class="specials-grid">';
+
+        var lateItems = [
+          { key:"campeon",   icon:"🏆", title:"Campeón del Mundial", pts:"10 pts" },
+          { key:"finalista", icon:"🥈", title:"Finalista",           pts:"5 pts"  },
+          { key:"semi1",     icon:"4️⃣", title:"Semifinalista 1",     pts:"4 pts"  },
+          { key:"semi2",     icon:"4️⃣", title:"Semifinalista 2",     pts:"4 pts"  },
+        ];
+        lateItems.forEach(function(item) {
           html += '<div class="special-card">'
             + '<div class="special-icon">' + item.icon + '</div>'
             + '<div class="special-title">' + item.title + '</div>'
             + '<div class="special-pts">+' + item.pts + '</div>'
-            + '<select class="special-select" id="spec_' + item.key + '">' + opts + '</select>'
+            + makeSelect('spec_' + item.key, ALL_TEAMS, mySpecials[item.key] || '', !lateOpen)
+            + '</div>';
+        });
+        html += '</div></div>';
+
+        // ── Sección TEMPRANA: Goleador, Sorpresa, Estrella (cierra antes del torneo) ──
+        html += '<div>'
+          + '<div style="font-family:\'Bebas Neue\',cursive;font-size:1.3rem;letter-spacing:.06em;margin-bottom:12px;color:var(--gold)">⭐ Antes del torneo</div>'
+          + sectionBanner(earlyOpen, myDeadlines.early, 'Cierra 1h antes del primer partido (11 jun)')
+          + '<div class="specials-grid">';
+
+        var earlyItems = [
+          { key:"goleador", icon:"👟", title:"Máximo Goleador",    pts:"8 pts", teams: ALL_TEAMS    },
+          { key:"sorpresa", icon:"💥", title:"Sorpresa del Torneo",pts:"6 pts", teams: FAVORITES_SP },
+        ];
+        earlyItems.forEach(function(item) {
+          html += '<div class="special-card">'
+            + '<div class="special-icon">' + item.icon + '</div>'
+            + '<div class="special-title">' + item.title + '</div>'
+            + '<div class="special-pts">+' + item.pts + '</div>'
+            + makeSelect('spec_' + item.key, item.teams, mySpecials[item.key] || '', !earlyOpen)
             + '</div>';
         });
 
+        // Equipo estrella — ocupa toda la fila
+        var disEstrella = !earlyOpen ? ' disabled style="opacity:.45;cursor:not-allowed"' : '';
         var optsEstrella = '<option value="">— Elige tu equipo —</option>';
         ALL_TEAMS.forEach(function(t) {
-          var sel = mySpecials["equipo_estrella"] === t ? " selected" : "";
+          var sel = (mySpecials['equipo_estrella'] === t) ? ' selected' : '';
           optsEstrella += '<option value="' + esc(t) + '"' + sel + '>' + esc(t) + '</option>';
         });
         html += '<div class="special-card" style="grid-column:1/-1;border-color:rgba(168,85,247,.2);background:linear-gradient(135deg,rgba(168,85,247,.05) 0%,var(--card) 100%)">'
           + '<div class="special-icon">⭐</div>'
           + '<div class="special-title">Tu Equipo Estrella</div>'
           + '<div class="special-pts" style="color:#a855f7">+1 pt en cada acierto donde juegue</div>'
-          + '<select class="special-select" id="spec_estrella">' + optsEstrella + '</select>'
+          + '<select class="special-select" id="spec_estrella"' + disEstrella + '>' + optsEstrella + '</select>'
           + '</div>';
 
-        html += '</div>';
+        html += '</div></div>';
         el.innerHTML = html;
       }
 
@@ -781,23 +827,30 @@
 
       async function saveSpecials() {
         const data = {
-          action: "saveSpecials",
-          pid: user.id,
-          campeon:        document.getElementById("spec_campeon")?.value   || "",
-          finalista:      document.getElementById("spec_finalista")?.value || "",
-          semi1:          document.getElementById("spec_semi1")?.value     || "",
-          semi2:          document.getElementById("spec_semi2")?.value     || "",
-          goleador:       document.getElementById("spec_goleador")?.value  || "",
-          sorpresa:       document.getElementById("spec_sorpresa")?.value  || "",
-          equipo_estrella:document.getElementById("spec_estrella")?.value  || "",
+          action:          "saveSpecials",
+          pid:             user.id,
+          campeon:         document.getElementById("spec_campeon")?.value          || "",
+          finalista:       document.getElementById("spec_finalista")?.value        || "",
+          semi1:           document.getElementById("spec_semi1")?.value            || "",
+          semi2:           document.getElementById("spec_semi2")?.value            || "",
+          goleador:        document.getElementById("spec_goleador")?.value         || "",
+          sorpresa:        document.getElementById("spec_sorpresa")?.value         || "",
+          equipo_estrella: document.getElementById("spec_estrella")?.value         || "",
         };
         setBtnLoading(true);
         setStatus("Guardando...", "");
         try {
           const res = await postApi(data);
           if (res.success) {
-            mySpecials = { ...data };
-            setStatus("✅ Predicciones especiales guardadas", "success");
+            mySpecials  = { ...mySpecials, ...data };
+            myDeadlines = res.deadlines || myDeadlines;
+            const dl = res.deadlines || {};
+            let msg = "✅ Guardado";
+            if (dl.earlyOpen && dl.lateOpen)   msg = "✅ Todas las predicciones guardadas";
+            else if (dl.lateOpen)               msg = "✅ Campeón/finalistas guardados (torneo ya empezó)";
+            else if (dl.earlyOpen)              msg = "✅ Goleador/sorpresa/estrella guardados";
+            setStatus(msg, "success");
+            renderSpecials();
           } else {
             setStatus("❌ " + (res.error || "Error"), "error");
           }
