@@ -8,7 +8,7 @@ const API_BASE = 'https://api.football-data.org/v4';
 
 const FAVORITES = [
   'Brazil','Argentina','France','England','Spain','Germany',
-  'Portugal','Netherlands','Belgium','Uruguay','Italy','Croatia',
+  'Portugal','Netherlands','Belgium','Uruguay','Croatia',
   'Colombia','USA','United States'
 ];
 
