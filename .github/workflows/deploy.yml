@@ -17,7 +17,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./
-          server-dir: clinicadentalmadrid.net/porra2026/
+          server-dir: /
           exclude: |
             **/.git*
             **/.git*/**
