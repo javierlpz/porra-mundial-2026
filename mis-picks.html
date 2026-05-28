@@ -649,13 +649,13 @@
                 ? `<div class="pred-result-display">${pred.gl !== undefined ? pred.gl : "—"}</div>
                    <div class="pred-separator">–</div>
                    <div class="pred-result-display">${pred.gv !== undefined ? pred.gv : "—"}</div>`
-                : `<input type="number" min="0" max="20" class="pred-input ${pred.gl !== undefined ? "filled" : ""}"
-                     id="gl_${m.id}" value="${pred.gl !== undefined ? pred.gl : ""}"
-                     placeholder="0" oninput="onPredInput(this,'${m.id}')" />
+                : `<input type="number" min="0" max="20" class="pred-input filled"
+                     id="gl_${m.id}" value="${pred.gl !== undefined ? pred.gl : "0"}"
+                     oninput="onPredInput(this,'${m.id}')" />
                    <div class="pred-separator">–</div>
-                   <input type="number" min="0" max="20" class="pred-input ${pred.gv !== undefined ? "filled" : ""}"
-                     id="gv_${m.id}" value="${pred.gv !== undefined ? pred.gv : ""}"
-                     placeholder="0" oninput="onPredInput(this,'${m.id}')" />`}
+                   <input type="number" min="0" max="20" class="pred-input filled"
+                     id="gv_${m.id}" value="${pred.gv !== undefined ? pred.gv : "0"}"
+                     oninput="onPredInput(this,'${m.id}')" />`}
             </div>
             <div class="pred-team">
               <div class="pred-flag">${flagEmoji(m.equipo_visitante)}</div>
