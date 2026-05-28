@@ -1,6 +1,6 @@
 # 🏆 Porra Mundial 2026 — Guía completa v2.1
 
-> **Versión actual: 2.1** · Junio 2026
+> **Versión actual: 2.1** · Mayo 2026
 
 ---
 
@@ -14,6 +14,79 @@
 | `bracket.html` | Cuadro del torneo |
 | `reglas.html` | Reglas y puntuación |
 | `perfil.html` | Perfil público de cada jugador |
+| `.github/workflows/deploy.yml` | Pipeline de despliegue automático |
+
+---
+
+## INFRAESTRUCTURA
+
+| Componente | Detalle |
+|---|---|
+| Backend | Google Apps Script (gratuito) |
+| Base de datos | Google Sheets |
+| API de resultados | football-data.org (free tier) |
+| Hosting | cPanel — clinicadentalmadrid.net/porra2026 |
+| Repositorio | GitHub — javierlpz/porra-mundial-2026 |
+| CI/CD | GitHub Actions → FTP a cPanel |
+
+**URL de la app:** `https://clinicadentalmadrid.net/porra2026/`
+
+---
+
+## FLUJO DE TRABAJO (día a día)
+
+```
+Claude genera archivos → descargar → arrastrar a carpeta local del repo
+→ GitHub Desktop: Commit to main → Push
+→ GitHub Actions despliega automáticamente a cPanel (~30 segundos)
+```
+
+---
+
+## CONFIGURACIÓN DEL PIPELINE (ya hecho, solo para referencia)
+
+### GitHub Secrets (Settings → Secrets → Actions → Repository secrets)
+
+| Secret | Valor |
+|---|---|
+| `FTP_SERVER` | `185.156.219.32` |
+| `FTP_USERNAME` | `javierlopez@soydentaria.com` |
+| `FTP_PASSWORD` | contraseña de la cuenta FTP |
+
+> ⚠️ Usar la IP directa, no `ftp.soydentaria.com` — el dominio no resuelve.
+
+### `.github/workflows/deploy.yml`
+
+```yaml
+name: Deploy to cPanel
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./
+          server-dir: /
+          exclude: |
+            **/.git*
+            **/.git*/**
+            INSTRUCCIONES.md
+            Code.gs
+            README.md
+```
+
+> `server-dir: /` porque el usuario FTP `javierlopez@soydentaria.com` tiene como raíz directamente la carpeta `porra2026`. Cualquier ruta adicional crearía subcarpetas incorrectas.
 
 ---
 
@@ -61,7 +134,7 @@ Apps Script → **Implementar → Nueva implementación**
 - Ejecutar como: **Yo**
 - Acceso: **Cualquier usuario**
 
-Copiar la URL resultante:
+Copiar la URL:
 ```
 https://script.google.com/macros/s/XXXXXXXXXXXXXXXX/exec
 ```
@@ -71,18 +144,16 @@ https://script.google.com/macros/s/XXXXXXXXXXXXXXXX/exec
 En los 4 archivos HTML (`index.html`, `mis-picks.html`, `bracket.html`, `perfil.html`) reemplazar:
 ```javascript
 const SCRIPT_URL = "TU_WEBAPP_URL_AQUI";
-// por:
-const SCRIPT_URL = "https://script.google.com/macros/s/XXXX/exec";
 ```
 
 > `reglas.html` no necesita URL (es estático).
 
-### Paso 6 — Subir a cPanel
+### Paso 6 — Configurar GitHub + despliegue automático
 
-1. cPanel → Administrador de archivos → `public_html`
-2. Crear carpeta `porra2026`
-3. Subir los 5 HTML: `index.html`, `mis-picks.html`, `bracket.html`, `reglas.html`, `perfil.html`
-4. Acceso: `https://tudominio.com/porra2026/`
+1. Crear repo en GitHub (privado)
+2. Añadir los 3 Repository secrets (ver tabla arriba)
+3. Crear `.github/workflows/deploy.yml` con el contenido de arriba
+4. Hacer push → GitHub Actions despliega a cPanel automáticamente
 
 ### Paso 7 — Activar sincronización automática
 
@@ -92,13 +163,11 @@ En Apps Script ejecutar `setupTriggers()` → sincroniza resultados cada 5 minut
 
 ## MIGRACIÓN DESDE VERSIÓN ANTERIOR
 
-Si ya tenías la porra instalada:
-
 1. **Reemplazar `Code.gs`** en Apps Script → guardar
 2. **Ejecutar `setup()`** → crea las hojas nuevas sin borrar las existentes
 3. **Redesplegar la webapp** → Implementar → Gestionar implementaciones → Nueva versión
-4. **Reemplazar los 5 HTML** en cPanel (añadir el nuevo `perfil.html`)
-5. La columna `equipo_estrella` en `Predicciones_Especiales` se añade sola la primera vez que alguien guarda sus especiales
+4. **Push al repo** → GitHub Actions despliega los HTML automáticamente
+5. La columna `equipo_estrella` se añade sola la primera vez que alguien guarda sus especiales
 
 ---
 
@@ -118,15 +187,15 @@ Si ya tenías la porra instalada:
 | Resultado exacto (90 min) | **7 pts** |
 | Solo el equipo ganador | **4 pts** |
 
-> La prórroga y los penaltis no cuentan para el marcador exacto, solo para determinar el ganador.
+> La prórroga y penaltis no cuentan para el marcador exacto, solo para determinar el ganador.
 
 ### ⭐ Equipo Estrella *(bonus permanente)*
 
-Cada jugador elige un equipo antes del torneo. En cada partido donde juegue y aciertes (ganador o exacto), **+1 punto extra** automático.
+Cada jugador elige un equipo antes del torneo. En cada partido donde juegue y aciertes, **+1 punto extra** automático.
 
 ### 🎰 Partido Joker *(×2, una vez en toda la porra)*
 
-Activa el joker en cualquier partido antes del cierre. Los puntos de ese partido se **multiplican por 2**. No se puede cambiar ni cancelar.
+Activa el joker en cualquier partido antes del cierre. Los puntos se **multiplican por 2**. No se puede cambiar ni cancelar.
 
 ### 🌟 Predicciones Especiales
 
@@ -140,7 +209,7 @@ Activa el joker en cualquier partido antes del cierre. Los puntos de ese partido
 
 ---
 
-## FUNCIONALIDADES NUEVAS v2.0+
+## FUNCIONALIDADES
 
 | Funcionalidad | Dónde |
 |---|---|
@@ -154,7 +223,7 @@ Activa el joker en cualquier partido antes del cierre. Los puntos de ese partido
 | 🎰 Joker (×2 en un partido) | mis-picks.html |
 | ⭐ Equipo Estrella (+1 pt bonus) | mis-picks.html |
 | ☰ Menú hamburguesa (móvil) | todas las páginas |
-| 👋 Sesión compartida (nombre visible en toda la app) | todas las páginas |
+| 👋 Sesión compartida en toda la app | todas las páginas |
 
 ---
 
@@ -181,12 +250,12 @@ Activa el joker en cualquier partido antes del cierre. Los puntos de ese partido
 | `getMatches` | `fase`, `grupo` | Partidos |
 | `getBracket` | — | Cuadro eliminatorio |
 | `getPredictions` | `pid` | Picks de un jugador |
-| `getMatchPredictions` | `mid` | Picks de todos en un partido (bloqueado) |
-| `getGroupConsensus` | `grupo` | Consenso grupo completo |
+| `getMatchPredictions` | `mid` | Picks de todos (solo partidos bloqueados) |
+| `getGroupConsensus` | `grupo` | Consenso de un grupo completo |
 | `getSpecials` | `pid` | Especiales de un jugador |
 | `checkUser` | `nombre`, `pin` | Login |
 | `getStats` | — | Estadísticas globales |
-| `getMatchLockStatus` | — | Estado de bloqueo |
+| `getMatchLockStatus` | — | Estado de bloqueo de partidos |
 | `getDailyComment` | — | Crónica del día |
 | `getHistory` | `pid` (opcional) | Historial ranking |
 | `getProfile` | `pid` | Perfil completo |
@@ -201,20 +270,24 @@ Activa el joker en cualquier partido antes del cierre. Los puntos de ese partido
 | `saveSpecials` | `{pid, campeon, finalista, semi1, semi2, goleador, sorpresa, equipo_estrella}` | Guardar especiales |
 | `saveJoker` | `{pid, mid}` | Activar joker |
 
-> ⚠️ Todos los POST usan `Content-Type: text/plain;charset=utf-8` para evitar el preflight CORS de Google Apps Script.
-
 ---
 
-## NOTAS TÉCNICAS
+## NOTAS TÉCNICAS IMPORTANTES
 
 **CORS en Google Apps Script**
-Los POST deben enviarse con `Content-Type: text/plain;charset=utf-8`. Con `application/json` el navegador hace un preflight OPTIONS que Apps Script no responde, causando "Error de conexión".
+Todos los POST usan `Content-Type: text/plain;charset=utf-8`. Con `application/json` el navegador hace un preflight OPTIONS que Apps Script no responde, causando "Error de conexión".
+
+**renderSpecials() — template literals**
+La función `renderSpecials` usa `forEach` con concatenación de strings en lugar de template literals anidados. Los template literals con 3 niveles de anidamiento fallan silenciosamente en algunos navegadores produciendo output vacío.
+
+**FTP — IP directa**
+El dominio `ftp.soydentaria.com` no resuelve. Usar siempre la IP `185.156.219.32`.
+
+**server-dir en deploy.yml**
+El usuario FTP `javierlopez@soydentaria.com` tiene como raíz directamente la carpeta `porra2026`. Por eso `server-dir: /`. Cualquier ruta adicional crea subcarpetas incorrectas.
 
 **Sincronización automática**
 `syncResults()` se ejecuta cada 5 minutos. Llama a `updatePartidos()`, `syncScorers()` y `calculateAllPoints()`. El snapshot diario del ranking se guarda una vez por día automáticamente.
-
-**Perfil público**
-Accesible en `perfil.html?pid=ID_DEL_JUGADOR`. El ID está en la hoja `Participantes`. Los nombres en el ranking son clicables y llevan al perfil.
 
 ---
 
