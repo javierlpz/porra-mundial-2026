@@ -1,13 +1,11 @@
 // ============================================================
-//  PORRA MUNDIAL 2026 — Google Apps Script Backend v2.0
-//  Cambios vs v1: joker, equipo_estrella, logros, perfil,
-//  historial ranking, goleadores live, resolución de especiales
+//  PORRA MUNDIAL 2026 — Google Apps Script Backend v2.1
+//  Fix: savePredictions ya no bloquea partidos sin kickoff
 // ============================================================
 
 const COMPETITION_ID = 2000;
 const API_BASE = 'https://api.football-data.org/v4';
 
-// Equipos favoritos para "Sorpresa del torneo" (caen en grupos → 6 pts)
 const FAVORITES = [
   'Brazil','Argentina','France','England','Spain','Germany',
   'Portugal','Netherlands','Belgium','Uruguay','Italy','Croatia',
@@ -28,7 +26,6 @@ function getSheet(name) {
   return sheet;
 }
 
-// Obtiene la hoja o la crea con las cabeceras indicadas
 function getOrCreateSheet(name, headers) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(name);
@@ -173,8 +170,12 @@ function savePredictions(data) {
     }
     if (!match) { errors.push(p.mid); continue; }
 
-    const lockTime = new Date(new Date(match.kickoff).getTime() - 60 * 60 * 1000);
-    if (now >= lockTime) { blocked.push(p.mid); continue; }
+    // FIX v2.1: solo bloquear si kickoff existe y ha pasado la hora de cierre.
+    // Si kickoff está vacío (partido sin fecha aún), se permite guardar.
+    if (match.kickoff) {
+      const lockTime = new Date(new Date(match.kickoff).getTime() - 60 * 60 * 1000);
+      if (now >= lockTime) { blocked.push(p.mid); continue; }
+    }
 
     let existingRow = -1;
     for (let i = 1; i < predRows.length; i++) {
@@ -206,7 +207,6 @@ function getPredictions(pid) {
   return { preds };
 }
 
-// Todas las predicciones de un partido (solo si está bloqueado)
 function getMatchPredictions(mid) {
   const matchSheet = getSheet('Partidos');
   const matchRows  = matchSheet.getDataRange().getValues();
@@ -223,7 +223,9 @@ function getMatchPredictions(mid) {
   if (!match) return { error: 'Partido no encontrado' };
 
   const now      = new Date();
-  const lockTime = new Date(new Date(match.kickoff).getTime() - 60 * 60 * 1000);
+  const lockTime = match.kickoff
+    ? new Date(new Date(match.kickoff).getTime() - 60 * 60 * 1000)
+    : new Date(0);
   if (now < lockTime) return { error: 'Las predicciones aún no son visibles' };
 
   const predSheet = getSheet('Predicciones');
@@ -263,7 +265,6 @@ function getMatchPredictions(mid) {
   };
 }
 
-// Consenso para todos los partidos bloqueados de un grupo (una sola llamada)
 function getGroupConsensus(grupo) {
   const { matches } = getMatches('GROUP_STAGE', grupo);
   const now    = new Date();
@@ -335,14 +336,12 @@ function saveJoker(data) {
     ['participante_id', 'partido_id', 'timestamp']);
   const rows = sheet.getDataRange().getValues();
 
-  // Verificar que no ha usado ya el joker
   for (let i = 1; i < rows.length; i++) {
     if (String(rows[i][0]) === String(data.pid)) {
       return { error: 'Ya has usado tu partido doble en esta porra' };
     }
   }
 
-  // Verificar que el partido no está cerrado
   const matchSheet = getSheet('Partidos');
   const matchRows  = matchSheet.getDataRange().getValues();
   const mHeaders   = matchRows[0];
@@ -356,11 +355,13 @@ function saveJoker(data) {
   }
   if (!match) return { error: 'Partido no encontrado' };
 
-  const now      = new Date();
-  const lockTime = new Date(new Date(match.kickoff).getTime() - 60 * 60 * 1000);
-  if (now >= lockTime) return { error: 'El partido ya está cerrado para el joker' };
+  if (match.kickoff) {
+    const now      = new Date();
+    const lockTime = new Date(new Date(match.kickoff).getTime() - 60 * 60 * 1000);
+    if (now >= lockTime) return { error: 'El partido ya está cerrado para el joker' };
+  }
 
-  sheet.appendRow([data.pid, data.mid, now.toISOString()]);
+  sheet.appendRow([data.pid, data.mid, new Date().toISOString()]);
   return { success: true, mid: data.mid };
 }
 
@@ -405,7 +406,6 @@ function getRanking() {
   return { ranking, updated: new Date().toISOString() };
 }
 
-// Guarda un snapshot diario del ranking (máx 1 por día)
 function saveRankingSnapshot() {
   const { ranking } = getRanking();
   if (!ranking || ranking.length === 0) return;
@@ -419,7 +419,7 @@ function saveRankingSnapshot() {
   const rows  = sheet.getDataRange().getValues();
   if (rows.length > 1) {
     const lastDate = String(rows[rows.length - 1][7]).slice(0, 10);
-    if (lastDate === today) return; // Ya guardamos hoy
+    if (lastDate === today) return;
   }
 
   const now = new Date().toISOString();
@@ -441,7 +441,6 @@ function getHistory(pid) {
   const headers = rows[0];
 
   if (pid) {
-    // Historial de un jugador específico
     const history = [];
     for (let i = 1; i < rows.length; i++) {
       if (!rows[i][0] || String(rows[i][0]) !== String(pid)) continue;
@@ -451,7 +450,6 @@ function getHistory(pid) {
     }
     return { history };
   } else {
-    // Todos los jugadores agrupados (para el gráfico del index)
     const byPid = {};
     for (let i = 1; i < rows.length; i++) {
       if (!rows[i][0]) continue;
@@ -559,7 +557,6 @@ function getDailyComment() {
     `${colista.nombre} lleva ${colista.total} puntos. Hasta el VAR habría acertado más, y eso ya es mucho decir. 📺`,
   ];
 
-  // Seed cambia cada día y con los pts para variedad
   const seed = lider.total + colista.total + new Date().getDate() + new Date().getMonth();
 
   return {
@@ -590,7 +587,6 @@ function getProfile(pid) {
   const userRank = ranking.find(r => String(r.participante_id) === String(pid)) || {};
   const pos      = userRank.pos || '—';
 
-  // Partidos finalizados
   const matches = {};
   for (let i = 1; i < matchRows.length; i++) {
     const m = {};
@@ -630,7 +626,8 @@ function getProfile(pid) {
     historial.push({
       mid: match.id, local: match.equipo_local, visitante: match.equipo_visitante,
       predL: glP, predV: gvP, realL: glR, realV: gvR,
-      kickoff: match.kickoff, result: isExacto ? 'exact' : isGanador ? 'winner' : 'miss',
+      kickoff: match.kickoff,
+      result: isExacto ? 'exact' : isGanador ? 'winner' : 'miss',
       fase: match.fase
     });
   }
@@ -700,8 +697,8 @@ function getAchievements(pid) {
   }
   userPreds.sort((a, b) => a.kickoff - b.kickoff);
 
-  const total    = userPreds.length;
-  const exactos  = userPreds.filter(p => p.isExacto).length;
+  const total     = userPreds.length;
+  const exactos   = userPreds.filter(p => p.isExacto).length;
   const ganadores = userPreds.filter(p => p.isGanador).length;
 
   let exactStreak = 0, maxExactStreak = 0;
@@ -714,8 +711,10 @@ function getAchievements(pid) {
   for (const p of userPreds) {
     if (p.isExacto) { exactStreak++; maxExactStreak = Math.max(maxExactStreak, exactStreak); }
     else exactStreak = 0;
-    if (!p.isGanador) { missStreak++; maxMissStreak = Math.max(maxMissStreak, missStreak); noWinStreak++; maxNoWinStreak = Math.max(maxNoWinStreak, noWinStreak); }
-    else { missStreak = 0; noWinStreak = 0; }
+    if (!p.isGanador) {
+      missStreak++; maxMissStreak = Math.max(maxMissStreak, missStreak);
+      noWinStreak++; maxNoWinStreak = Math.max(maxNoWinStreak, noWinStreak);
+    } else { missStreak = 0; noWinStreak = 0; }
     const key = `${p.predL}-${p.predV}`;
     scoreCount[key] = (scoreCount[key] || 0) + 1;
     if (p.isExacto && p.totalGoals >= 4) hasHighGoalExact = true;
@@ -725,28 +724,30 @@ function getAchievements(pid) {
     }
   }
 
-  const maxSameScore  = Object.values(scoreCount).length ? Math.max(...Object.values(scoreCount)) : 0;
-  const hasDayHatTrick = Object.values(exactsByDay).some(v => v >= 3);
+  const maxSameScore = Object.values(scoreCount).length
+    ? Math.max(...Object.values(scoreCount)) : 0;
+  const maxExactsInDay = Object.values(exactsByDay).length
+    ? Math.max(...Object.values(exactsByDay)) : 0;
 
   const earned = [];
-  if (exactos >= 1)                               earned.push('quinielas');
-  if (maxExactStreak >= 5)                        earned.push('nostradamus');
-  if (maxMissStreak  >= 3)                        earned.push('var');
-  if (total >= 10 && ganadores / total >= 0.75)   earned.push('pulpo');
-  if (hasHighGoalExact)                           earned.push('nba');
-  if (maxSameScore >= 8)                          earned.push('copypaste');
-  if (hasDayHatTrick)                             earned.push('hattrick');
-  if (maxNoWinStreak >= 5)                        earned.push('seleccionador');
+  if (exactos >= 1)                                       earned.push('quinielas');
+  if (maxExactStreak >= 5)                                earned.push('nostradamus');
+  if (maxMissStreak >= 3)                                 earned.push('var');
+  if (total >= 10 && ganadores / total >= 0.75)           earned.push('pulpo');
+  if (hasHighGoalExact)                                   earned.push('nba');
+  if (maxSameScore >= 8)                                  earned.push('copypaste');
+  if (maxExactsInDay >= 3)                                earned.push('hattrick');
+  if (maxNoWinStreak >= 5)                                earned.push('seleccionador');
 
   const ALL_ACHIEVEMENTS = [
-    { id:'quinielas',     icon:'🎯', name:'El Quinielas',          desc:'Tu primer resultado exacto' },
-    { id:'nostradamus',   icon:'🔮', name:'Nostradamus con Balón', desc:'5 exactos consecutivos' },
-    { id:'var',           icon:'💀', name:'Peor que el VAR',       desc:'3 partidos seguidos a 0 pts' },
-    { id:'pulpo',         icon:'🐙', name:'Paul el Pulpo',         desc:'+75% de acierto (mín. 10 partidos)' },
-    { id:'nba',           icon:'🏀', name:'¿Esto es la NBA?',      desc:'Exacto en un partido con 4+ goles' },
-    { id:'copypaste',     icon:'😴', name:'Copy-Paste FC',         desc:'Mismo marcador en 8+ partidos' },
-    { id:'hattrick',      icon:'🔥', name:'Hat-Trick de Sofá',     desc:'3 exactos en el mismo día' },
-    { id:'seleccionador', icon:'🤡', name:'Seleccionador Nacional',desc:'5 partidos seguidos sin acertar el ganador' },
+    { id:'quinielas',     icon:'🎯', name:'El Quinielas',           desc:'Tu primer resultado exacto' },
+    { id:'nostradamus',   icon:'🔮', name:'Nostradamus con Balón',   desc:'5 exactos consecutivos' },
+    { id:'var',           icon:'💀', name:'Peor que el VAR',         desc:'3 partidos seguidos a 0 puntos' },
+    { id:'pulpo',         icon:'🐙', name:'Paul el Pulpo',           desc:'>75% acierto (mín. 10 partidos)' },
+    { id:'nba',           icon:'🏀', name:'¿Esto es la NBA?',        desc:'Exacto en un partido con 4+ goles' },
+    { id:'copypaste',     icon:'😴', name:'Copy-Paste FC',            desc:'Mismo marcador en 8+ partidos' },
+    { id:'hattrick',      icon:'🔥', name:'Hat-Trick de Sofá',       desc:'3 exactos en el mismo día' },
+    { id:'seleccionador', icon:'🤡', name:'Seleccionador Nacional',   desc:'5 partidos seguidos sin acertar el ganador' },
   ];
 
   return {
@@ -870,7 +871,7 @@ function isEliminatedInGroups(teamName, matchRows, mHeaders) {
     const m = {};
     mHeaders.forEach((h, j) => m[h] = matchRows[i][j]);
     if (m.fase !== 'GROUP_STAGE' || m.grupo !== teamGroup) continue;
-    if (m.estado !== 'FINISHED') return false; // aún no terminó el grupo
+    if (m.estado !== 'FINISHED') return false;
 
     const gl = parseInt(m.goles_local), gv = parseInt(m.goles_visitante);
     if (isNaN(gl) || isNaN(gv)) return false;
@@ -892,7 +893,7 @@ function isEliminatedInGroups(teamName, matchRows, mHeaders) {
     .sort(([,a], [,b]) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf)
     .map(([name]) => name);
 
-  return sorted.indexOf(teamName) >= 2; // 3.º o 4.º = eliminado
+  return sorted.indexOf(teamName) >= 2;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -919,7 +920,6 @@ function calculatePoints(pid) {
 
   const jokerMid = getJokerMatchId(pid);
 
-  // Leer especiales del jugador
   let equipoEstrella = '', campeon = '', finalista = '', semi1 = '', semi2 = '', goleador = '', sorpresa = '';
   for (let i = 1; i < specRows.length; i++) {
     if (String(specRows[i][0]) !== String(pid)) continue;
@@ -934,7 +934,6 @@ function calculatePoints(pid) {
     break;
   }
 
-  // Indexar partidos finalizados
   const matches = {};
   for (let i = 1; i < matchRows.length; i++) {
     const m = {};
@@ -944,7 +943,6 @@ function calculatePoints(pid) {
 
   let ptsGrupos = 0, ptsElim = 0, ptsSpec = 0;
 
-  // ── Predicciones de partido ──
   for (let i = 1; i < predRows.length; i++) {
     if (String(predRows[i][0]) !== String(pid)) continue;
     const p = {};
@@ -968,20 +966,17 @@ function calculatePoints(pid) {
       }
     }
 
-    // Bonus equipo estrella (+1 si el equipo juega y aciertas)
     if (pts > 0 && equipoEstrella &&
         (match.equipo_local === equipoEstrella || match.equipo_visitante === equipoEstrella)) {
       pts += 1;
     }
 
-    // Joker ×2
     if (jokerMid && String(match.id) === jokerMid) pts *= 2;
 
     if (match.fase === 'GROUP_STAGE') ptsGrupos += pts;
     else ptsElim += pts;
   }
 
-  // ── Especiales ──
   const champion = getFinalWinner(matchRows, mHeaders);
   if (champion && campeon === champion)   ptsSpec += 10;
 
@@ -1074,6 +1069,7 @@ function updatePartidos(apiMatches) {
         set('goles_local',     golesL);
         set('goles_visitante', golesV);
         set('estado',          estado);
+        if (kickoff) set('kickoff', kickoff);
         if (localN !== 'TBD') set('equipo_local',     localN);
         if (visitN !== 'TBD') set('equipo_visitante', visitN);
         break;
@@ -1117,7 +1113,7 @@ function setup() {
         .setBackground('#1a1f35').setFontColor('#ffffff').setFontWeight('bold');
     }
   }
-  Logger.log('✅ Setup v2.0 completo! Hojas: ' + Object.keys(schemas).join(', '));
+  Logger.log('✅ Setup v2.1 completo! Hojas: ' + Object.keys(schemas).join(', '));
 }
 
 function setApiKey(key) {
