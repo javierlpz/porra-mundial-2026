@@ -114,6 +114,30 @@
     .hist-badge.exact { background: rgba(34,197,94,.15); color: var(--green); }
     .hist-badge.winner { background: rgba(59,130,246,.12); color: #7dd3fc; }
     .hist-badge.miss { background: rgba(239,68,68,.1); color: var(--red); }
+    .hist-pts { font-family: "Bebas Neue", cursive; font-size: 1.1rem; color: var(--gold); text-align: right; white-space: nowrap; }
+    .hist-pts.zero { color: var(--muted); }
+    .hist-pts-note { font-size: .65rem; color: var(--muted); font-family: "Outfit", sans-serif; display: block; text-align: right; }
+    .hist-pts-note.joker { color: #a855f7; }
+    .hist-pts-note.estrella { color: var(--gold); }
+    .hist-total-row td { border-top: 2px solid var(--border); background: var(--surface); font-weight: 700; padding: 12px 14px; }
+    .hist-total-label { font-size: .8rem; color: var(--silver); text-transform: uppercase; letter-spacing: .06em; }
+    .hist-total-pts { font-family: "Bebas Neue", cursive; font-size: 1.3rem; color: var(--gold); text-align: right; }
+
+    /* ——— Especiales breakdown ——— */
+    .spec-table { width: 100%; border-collapse: collapse; }
+    .spec-table thead th { padding: 9px 14px; text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--surface); border-bottom: 1px solid var(--border); }
+    .spec-table tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+    .spec-table tbody tr:last-child { border-bottom: none; }
+    .spec-table td { padding: 11px 14px; font-size: .85rem; vertical-align: middle; }
+    .spec-status { font-size: .75rem; font-weight: 700; padding: 3px 9px; border-radius: 100px; white-space: nowrap; }
+    .spec-status.hit     { background: rgba(34,197,94,.15);  color: var(--green); }
+    .spec-status.miss    { background: rgba(239,68,68,.1);   color: var(--red); }
+    .spec-status.pending { background: rgba(240,180,41,.1);  color: var(--gold); }
+    .spec-status.empty   { background: rgba(100,116,139,.1); color: var(--muted); }
+    .spec-status.active  { background: rgba(168,85,247,.12); color: #a855f7; }
+    .spec-pts { font-family: "Bebas Neue", cursive; font-size: 1.1rem; color: var(--gold); text-align: right; }
+    .spec-pts.zero { color: var(--muted); }
+    .spec-total-row td { border-top: 2px solid var(--border); background: var(--surface); font-weight: 700; padding: 12px 14px; }
 
     /* ——— Empty / Loading ——— */
     .loading-msg { text-align: center; padding: 64px 24px; color: var(--muted); font-size: .9rem; }
@@ -279,11 +303,22 @@
 
       <!-- Historial -->
       <div class="section">
-        <div class="section-title">📋 Historial reciente</div>
+        <div class="section-title">📋 Historial de partidos</div>
         <div class="table-wrap">
           <table class="hist-table">
-            <thead><tr><th>Partido</th><th>Tu pick</th><th>Resultado</th><th></th></tr></thead>
-            <tbody id="histBody"><tr><td colspan="4" style="text-align:center;padding:28px;color:var(--muted)">—</td></tr></tbody>
+            <thead><tr><th>Partido</th><th>Tu pick</th><th>Resultado</th><th>Estado</th><th style="text-align:right">Pts</th></tr></thead>
+            <tbody id="histBody"><tr><td colspan="5" style="text-align:center;padding:28px;color:var(--muted)">—</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Especiales -->
+      <div class="section">
+        <div class="section-title">🌟 Predicciones especiales</div>
+        <div class="table-wrap">
+          <table class="spec-table">
+            <thead><tr><th>Predicción</th><th>Tu pick</th><th>Estado</th><th style="text-align:right">Pts</th></tr></thead>
+            <tbody id="specBody"><tr><td colspan="4" style="text-align:center;padding:28px;color:var(--muted)">—</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -349,9 +384,9 @@
       document.getElementById('sRacha').textContent     = d.stats?.rachaActual ?? '—';
 
       document.getElementById('ptsPills').innerHTML = [
-        `Grupos: <strong>${d.pts_grupos||0}</strong>`,
-        `Eliminatorias: <strong>${d.pts_elim||0}</strong>`,
-        `Especiales: <strong>${d.pts_spec||0}</strong>`,
+        `⚽ Grupos: <strong>${d.pts_grupos||0}</strong>`,
+        `⚡ Eliminatorias: <strong>${d.pts_elim||0}</strong>`,
+        `🌟 Especiales: <strong>${d.pts_spec||0}</strong>`,
         `Acierto ganador: <strong>${d.stats?.pctGanador??'—'}%</strong>`,
         `Mejor racha: <strong>${d.stats?.mejorRacha||0}</strong>`,
         `Picks realizados: <strong>${d.stats?.totalPreds||0}</strong>`
@@ -363,25 +398,64 @@
         document.getElementById('locoDetail').textContent   = `Predijo: ${d.pickLoco.predL}–${d.pickLoco.predV} · Real: ${d.pickLoco.realL}–${d.pickLoco.realV} · Error de ${Math.abs(d.pickLoco.predL-d.pickLoco.realL)+Math.abs(d.pickLoco.predV-d.pickLoco.realV)} goles`;
       }
 
+      // ── Historial con puntos ──
       const tbody = document.getElementById('histBody');
       const hist  = d.historial || [];
       if (!hist.length) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:28px;color:var(--muted)">Aún no hay partidos finalizados</td></tr>';
-        return;
-      }
-      tbody.innerHTML = hist.map(h => {
-        const badge = h.result==='exact'
-          ? '<span class="hist-badge exact">✅ Exacto</span>'
-          : h.result==='winner'
-          ? '<span class="hist-badge winner">👍 Ganador</span>'
-          : '<span class="hist-badge miss">❌ Miss</span>';
-        return `<tr>
-          <td class="hist-match">${escHtml(h.local)} vs ${escHtml(h.visitante)} <span style="font-size:.72rem;color:var(--muted)">${fmt(h.kickoff)}</span></td>
-          <td class="hist-scores">${h.predL} – ${h.predV}</td>
-          <td class="hist-scores" style="color:var(--muted)">${h.realL} – ${h.realV}</td>
-          <td>${badge}</td>
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:28px;color:var(--muted)">Aún no hay partidos finalizados</td></tr>';
+      } else {
+        const totalHistPts = hist.reduce((s, h) => s + (h.pts || 0), 0);
+        tbody.innerHTML = hist.map(h => {
+          const badge = h.result==='exact'
+            ? '<span class="hist-badge exact">✅ Exacto</span>'
+            : h.result==='winner'
+            ? '<span class="hist-badge winner">👍 Ganador</span>'
+            : '<span class="hist-badge miss">❌ Miss</span>';
+          const ptsClass = (h.pts || 0) === 0 ? 'zero' : '';
+          let notes = '';
+          if (h.isJoker)     notes += '<span class="hist-pts-note joker">🎰 Joker ×2</span>';
+          if (h.ptsEstrella) notes += '<span class="hist-pts-note estrella">⭐ +' + h.ptsEstrella + ' estrella</span>';
+          return `<tr>
+            <td class="hist-match">${escHtml(h.local)} vs ${escHtml(h.visitante)} <span style="font-size:.72rem;color:var(--muted)">${fmt(h.kickoff)}</span></td>
+            <td class="hist-scores">${h.predL} – ${h.predV}</td>
+            <td class="hist-scores" style="color:var(--muted)">${h.realL} – ${h.realV}</td>
+            <td>${badge}</td>
+            <td class="hist-pts ${ptsClass}">${h.pts || 0} pts${notes}</td>
+          </tr>`;
+        }).join('');
+        tbody.innerHTML += `<tr class="hist-total-row">
+          <td colspan="4" class="hist-total-label">Total partidos</td>
+          <td class="hist-total-pts">${totalHistPts} pts</td>
         </tr>`;
-      }).join('');
+      }
+
+      // ── Especiales ──
+      const specBody = document.getElementById('specBody');
+      const especiales = d.especiales || [];
+      if (!especiales.length) {
+        specBody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:28px;color:var(--muted)">Sin predicciones especiales aún</td></tr>';
+      } else {
+        const totalSpecPts = especiales.reduce((s, e) => s + (e.pts_ganados || 0), 0);
+        const statusLabels = { hit:'✅ Acertado', miss:'❌ Fallado', pending:'⏳ Pendiente', empty:'— Sin pick', active:'⭐ Activo' };
+        specBody.innerHTML = especiales.map(e => {
+          const ptsDisplay = e.pts_posibles === null
+            ? (e.pts_ganados > 0 ? `+${e.pts_ganados} pts` : '—')
+            : e.status === 'hit'     ? `+${e.pts_ganados} pts`
+            : e.status === 'pending' || e.status === 'active' ? `+${e.pts_posibles} posibles`
+            : '0 pts';
+          const ptsClass = (e.pts_ganados || 0) === 0 ? 'zero' : '';
+          return `<tr>
+            <td><span style="margin-right:6px">${e.icon}</span>${escHtml(e.label)}</td>
+            <td style="font-weight:600">${e.pred ? escHtml(e.pred) : '<span style="color:var(--muted)">—</span>'}</td>
+            <td><span class="spec-status ${e.status}">${statusLabels[e.status]||'—'}</span></td>
+            <td class="spec-pts ${ptsClass}">${ptsDisplay}</td>
+          </tr>`;
+        }).join('');
+        specBody.innerHTML += `<tr class="spec-total-row">
+          <td colspan="3" class="hist-total-label">Total especiales</td>
+          <td class="hist-total-pts">${totalSpecPts} pts</td>
+        </tr>`;
+      }
     }
 
     function renderAchievements(achievements) {

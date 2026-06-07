@@ -637,8 +637,10 @@ function getDailyComment() {
 function getProfile(pid) {
   const matchRows = getSheet('Partidos').getDataRange().getValues();
   const predRows  = getSheet('Predicciones').getDataRange().getValues();
+  const specRows  = getSheet('Predicciones_Especiales').getDataRange().getValues();
   const mHeaders  = matchRows[0];
   const pHeaders  = predRows[0];
+  const sHeaders  = specRows[0];
 
   const partRows = getSheet('Participantes').getDataRange().getValues();
   let nombre = 'Usuario';
@@ -649,6 +651,24 @@ function getProfile(pid) {
   const { ranking } = getRanking();
   const userRank = ranking.find(r => String(r.participante_id) === String(pid)) || {};
   const pos      = userRank.pos || '—';
+
+  // Leer especiales del jugador
+  let equipoEstrella = '', campeon = '', finalista = '', semi1 = '', semi2 = '', goleador = '', sorpresa = '';
+  for (let i = 1; i < specRows.length; i++) {
+    if (String(specRows[i][0]) !== String(pid)) continue;
+    campeon        = specRows[i][sHeaders.indexOf('campeon')]        || '';
+    finalista      = specRows[i][sHeaders.indexOf('finalista')]      || '';
+    semi1          = specRows[i][sHeaders.indexOf('semi1')]          || '';
+    semi2          = specRows[i][sHeaders.indexOf('semi2')]          || '';
+    goleador       = specRows[i][sHeaders.indexOf('goleador')]       || '';
+    sorpresa       = specRows[i][sHeaders.indexOf('sorpresa')]       || '';
+    const eeIdx    = sHeaders.indexOf('equipo_estrella');
+    equipoEstrella = eeIdx >= 0 ? (specRows[i][eeIdx] || '') : '';
+    break;
+  }
+
+  // Joker
+  const jokerMid = getJokerMatchId(pid);
 
   const matches = {};
   for (let i = 1; i < matchRows.length; i++) {
@@ -686,12 +706,31 @@ function getProfile(pid) {
       };
     }
 
+    // Calcular puntos con toda la lógica (estrella, joker)
+    let ptsBase = 0;
+    if (match.fase === 'GROUP_STAGE') {
+      if (isExacto)       ptsBase = 4;
+      else if (isGanador) ptsBase = 2;
+    } else {
+      if (isGanador) {
+        ptsBase = 4;
+        if (isExacto) ptsBase += 3;
+      }
+    }
+    const isJoker    = jokerMid && String(match.id) === jokerMid;
+    const hasEstrella = ptsBase > 0 && equipoEstrella &&
+      (match.equipo_local === equipoEstrella || match.equipo_visitante === equipoEstrella);
+    let ptsEstrella = hasEstrella ? 1 : 0;
+    let pts = (ptsBase + ptsEstrella) * (isJoker ? 2 : 1);
+
     historial.push({
       mid: match.id, local: match.equipo_local, visitante: match.equipo_visitante,
       predL: glP, predV: gvP, realL: glR, realV: gvR,
       kickoff: match.kickoff,
       result: isExacto ? 'exact' : isGanador ? 'winner' : 'miss',
-      fase: match.fase
+      fase: match.fase,
+      pts, ptsBase, ptsEstrella,
+      isJoker: !!isJoker
     });
   }
 
@@ -706,6 +745,34 @@ function getProfile(pid) {
     else temp = 0;
   }
 
+  // ── Desglose de especiales ──
+  const champion  = getFinalWinner(matchRows, mHeaders);
+  const finalist  = getFinalLoser(matchRows, mHeaders);
+  const semis     = getSemiFinalists(matchRows, mHeaders);
+  const topScorer = getTopScorerName();
+
+  // Estado de cada especial: 'hit' | 'miss' | 'pending'
+  function specStatus(pred, resolved, match) {
+    if (!pred) return 'empty';
+    if (!resolved) return 'pending';
+    return pred === match ? 'hit' : 'miss';
+  }
+  function semiStatus(pred) {
+    if (!pred) return 'empty';
+    if (semis.length === 0) return 'pending';
+    return semis.includes(pred) ? 'hit' : 'miss';
+  }
+
+  const especiales = [
+    { key: 'campeon',   icon: '🏆', label: 'Campeón del Mundial',  pred: campeon,   status: specStatus(campeon,   champion,  champion),  pts_posibles: 10, pts_ganados: champion  && campeon   === champion  ? 10 : 0 },
+    { key: 'finalista', icon: '🥈', label: 'Finalista',            pred: finalista, status: specStatus(finalista, finalist,  finalist),  pts_posibles: 5,  pts_ganados: finalist  && finalista === finalist  ? 5  : 0 },
+    { key: 'semi1',     icon: '4️⃣', label: 'Semifinalista 1',      pred: semi1,     status: semiStatus(semi1),                           pts_posibles: 4,  pts_ganados: semis.length && semis.includes(semi1) ? 4  : 0 },
+    { key: 'semi2',     icon: '4️⃣', label: 'Semifinalista 2',      pred: semi2,     status: semiStatus(semi2),                           pts_posibles: 4,  pts_ganados: semis.length && semis.includes(semi2) ? 4  : 0 },
+    { key: 'goleador',  icon: '👟', label: 'Máximo Goleador',      pred: goleador,  status: specStatus(goleador,  topScorer, topScorer), pts_posibles: 8,  pts_ganados: topScorer && goleador  === topScorer ? 8  : 0 },
+    { key: 'sorpresa',  icon: '💥', label: 'Sorpresa del Torneo',  pred: sorpresa,  status: !sorpresa ? 'empty' : !FAVORITES.includes(sorpresa) ? 'miss' : isEliminatedInGroups(sorpresa, matchRows, mHeaders) ? 'hit' : semis.length > 0 || champion ? 'miss' : 'pending', pts_posibles: 6, pts_ganados: sorpresa && FAVORITES.includes(sorpresa) && isEliminatedInGroups(sorpresa, matchRows, mHeaders) ? 6 : 0 },
+    { key: 'estrella',  icon: '⭐', label: 'Equipo Estrella',      pred: equipoEstrella, status: equipoEstrella ? 'active' : 'empty',    pts_posibles: null, pts_ganados: historial.reduce((s, h) => s + (h.ptsEstrella || 0), 0) }
+  ];
+
   return {
     pid, nombre, pos,
     total: userRank.total || 0,
@@ -719,7 +786,8 @@ function getProfile(pid) {
       rachaActual, mejorRacha
     },
     pickLoco,
-    historial: historial.slice(0, 25)
+    historial,
+    especiales
   };
 }
 

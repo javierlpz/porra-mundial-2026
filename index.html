@@ -1058,7 +1058,7 @@
             </td>
             <td class="rank-pts-cell">
               <div class="rank-total">${p.total || 0}</div>
-              <div class="rank-breakdown">${p.pts_grupos || 0}G · ${p.pts_eliminatorias || 0}E · ${p.pts_especiales || 0}★</div>
+              <div class="rank-breakdown"><span title="Fase de grupos">⚽ ${p.pts_grupos || 0}</span> · <span title="Eliminatorias">⚡ ${p.pts_eliminatorias || 0}</span> · <span title="Especiales">🌟 ${p.pts_especiales || 0}</span></div>
             </td>
           </tr>`;
           }
@@ -1211,8 +1211,6 @@
         'Cape Verde':'🇨🇻','Mozambique':'🇲🇿','Zambia':'🇿🇲','Angola':'🇦🇴',
         // Oceanía
         'New Zealand':'🇳🇿',
-        'Haiti':'🇭🇹','Bosnia-H.':'🇧🇦','Curaçao':'🇨🇼',
-        'Sweden':'🇸🇪','Norway':'🇳🇴',
       };
       function flagEmoji(name) {
         if (!name) return "🏳️";
