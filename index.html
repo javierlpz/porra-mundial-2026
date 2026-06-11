@@ -840,6 +840,20 @@
       <div class="cronica-grid" id="cronicaGrid"></div>
     </div>
 
+    <!-- GRÁFICO EVOLUCIÓN (colapsable) -->
+    <div class="chart-toggle-row" id="chartToggleRow" onclick="toggleChart()">
+      <span class="chart-toggle-label">📈 Evolución del Ranking</span>
+      <span class="chart-toggle-arrow" id="chartArrow">▼ Ver</span>
+    </div>
+    <div class="chart-panel" id="chartPanel">
+      <div class="chart-empty-msg" id="chartEmptyMsg" style="display:none">
+        El gráfico se irá llenando conforme avance el torneo ⏳
+      </div>
+      <div style="position:relative;height:260px" id="chartCanvasWrap">
+        <canvas id="rankingChart"></canvas>
+      </div>
+    </div>
+
     <!-- RANKING -->
     <div class="section">
       <div class="section-header">
@@ -866,19 +880,6 @@
         <div class="skeleton skeleton-row"></div>
       </div>
 
-      <!-- GRÁFICO EVOLUCIÓN (colapsable) -->
-      <div class="chart-toggle-row" id="chartToggleRow" onclick="toggleChart()">
-        <span class="chart-toggle-label">📈 Evolución del Ranking</span>
-        <span class="chart-toggle-arrow" id="chartArrow">▼ Ver</span>
-      </div>
-      <div class="chart-panel" id="chartPanel">
-        <div class="chart-empty-msg" id="chartEmptyMsg" style="display:none">
-          El gráfico se irá llenando conforme avance el torneo ⏳
-        </div>
-        <div style="position:relative;height:260px" id="chartCanvasWrap">
-          <canvas id="rankingChart"></canvas>
-        </div>
-      </div>
     </div>
 
     <!-- PARTIDOS EN JUEGO -->
