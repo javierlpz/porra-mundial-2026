@@ -694,6 +694,29 @@
       .sim-result p { margin-bottom: 6px; }
       .sim-result p:last-child { margin-bottom: 0; }
 
+      /* ——— Live picks modal ——— */
+      .picks-overlay { position:fixed; inset:0; background:rgba(7,9,15,.85); backdrop-filter:blur(8px); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; }
+      .picks-overlay.hidden { display:none; }
+      .picks-modal { background:var(--card); border:1px solid var(--border); border-radius:18px; padding:26px 24px 28px; width:100%; max-width:420px; max-height:80vh; display:flex; flex-direction:column; }
+      .picks-modal-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; }
+      .picks-modal-title { font-family:"Bebas Neue",cursive; font-size:1.5rem; letter-spacing:.06em; line-height:1.2; }
+      .picks-modal-close { background:none; border:none; color:var(--muted); font-size:1.2rem; cursor:pointer; margin-top:-2px; flex-shrink:0; }
+      .picks-modal-close:hover { color:var(--text); }
+      .picks-modal-body { overflow-y:auto; flex:1; }
+      .consensus-wrap { margin-bottom:10px; }
+      .consensus-bar { display:flex; height:26px; border-radius:8px; overflow:hidden; margin-bottom:6px; }
+      .cons-local { background:var(--green); display:flex; align-items:center; justify-content:center; font-size:.72rem; font-weight:700; color:#0a0c10; }
+      .cons-draw  { background:var(--gold);  display:flex; align-items:center; justify-content:center; font-size:.72rem; font-weight:700; color:#0a0c10; }
+      .cons-away  { background:var(--red);   display:flex; align-items:center; justify-content:center; font-size:.72rem; font-weight:700; color:#fff; }
+      .consensus-label { display:flex; gap:16px; font-size:.78rem; }
+      .picks-list { margin-top:10px; }
+      .picks-list-title { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:6px; }
+      .picks-row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid var(--border); font-size:.82rem; }
+      .picks-row:last-child { border-bottom:none; }
+      .picks-score { font-family:"Bebas Neue",cursive; font-size:1rem; color:var(--gold); }
+      .ver-picks-btn { background:rgba(240,180,41,.1); border:1px solid rgba(240,180,41,.25); color:var(--gold); border-radius:10px; padding:8px 14px; font-family:inherit; font-size:.8rem; font-weight:600; cursor:pointer; transition:all .2s; }
+      .ver-picks-btn:hover { background:rgba(240,180,41,.18); }
+
       /* ——— Rank name link ——— */
       .rank-name a { color: var(--text); text-decoration: none; }
       .rank-name a:hover { color: var(--gold); text-decoration: underline; }
@@ -919,6 +942,19 @@
     </footer>
 
     <!-- SIMULADOR MODAL -->
+    <!-- MODAL PICKS EN VIVO -->
+    <div class="picks-overlay hidden" id="picksOverlay" onclick="if(event.target===this)closeLivePicks()">
+      <div class="picks-modal">
+        <div class="picks-modal-header">
+          <div class="picks-modal-title" id="picksModalTitle">—</div>
+          <button class="picks-modal-close" onclick="closeLivePicks()">✕</button>
+        </div>
+        <div class="picks-modal-body" id="picksModalBody">
+          <p style="color:var(--muted);font-size:.85rem">Cargando...</p>
+        </div>
+      </div>
+    </div>
+
     <div class="sim-overlay hidden" id="simOverlay">
       <div class="sim-modal">
         <button class="sim-close" onclick="closeSimulator()">✕</button>
@@ -1164,6 +1200,7 @@
           </div>
         </div>
         ${!hasScore ? `<div class="match-time">${fmt(m.kickoff)}</div>` : ""}
+        ${isLive ? `<button class="ver-picks-btn" style="margin-top:10px;width:100%" onclick="openLivePicks('${m.id}', event)">👁️ Ver picks de todos</button>` : ""}
       </div>`;
       }
 
@@ -1320,6 +1357,41 @@
       }
 
       // ——— Simulador ———
+      function closeLivePicks() { document.getElementById('picksOverlay').classList.add('hidden'); }
+
+      async function openLivePicks(matchId, e) {
+        if (e) e.stopPropagation();
+        const m = _allMatchesData.find(x => String(x.id) === String(matchId));
+        const overlay = document.getElementById('picksOverlay');
+        const title = document.getElementById('picksModalTitle');
+        const body = document.getElementById('picksModalBody');
+        title.textContent = m ? (escHtml(m.equipo_local) + ' vs ' + escHtml(m.equipo_visitante)) : 'Picks';
+        body.innerHTML = '<p style="color:var(--muted);font-size:.85rem;padding:8px 0">Cargando...</p>';
+        overlay.classList.remove('hidden');
+        try {
+          const d = await api({ action: 'getGroupConsensus', grupo: m ? m.grupo : '' });
+          const cdata = d.data || {};
+          const entry = cdata[String(matchId)];
+          if (!entry) {
+            body.innerHTML = '<p style="color:var(--muted);font-size:.85rem;padding:8px 0">No hay picks disponibles.</p>';
+            return;
+          }
+          const con = entry.consensus;
+          const ps = entry.preds || [];
+          body.innerHTML =
+            "<div class='consensus-wrap'><div class='consensus-bar'>"
+            + "<div class='cons-local' style='width:" + con.local + "%'>" + (con.local > 8 ? con.local + "%" : "") + "</div>"
+            + "<div class='cons-draw'  style='width:" + con.draw  + "%'>" + (con.draw  > 8 ? con.draw  + "%" : "") + "</div>"
+            + "<div class='cons-away'  style='width:" + con.away  + "%'>" + (con.away  > 8 ? con.away  + "%" : "") + "</div>"
+            + "</div><div class='consensus-label'><span style='color:var(--green)'>Local " + con.local + "%</span><span style='color:var(--gold)'>Empate " + con.draw + "%</span><span style='color:var(--red)'>Visitante " + con.away + "%</span></div></div>"
+            + "<div class='picks-list'><div class='picks-list-title'>" + con.total + " picks</div>"
+            + ps.map(p => "<div class='picks-row'><span>" + escHtml(p.nombre) + "</span><span class='picks-score'>" + p.gl + "–" + p.gv + "</span></div>").join("")
+            + "</div>";
+        } catch(err) {
+          body.innerHTML = '<p style="color:var(--muted);font-size:.85rem;padding:8px 0">Error cargando picks.</p>';
+        }
+      }
+
       function openSimulator() {
         document.getElementById('simOverlay').classList.remove('hidden');
         populateSimSelects();
