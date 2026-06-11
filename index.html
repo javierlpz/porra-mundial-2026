@@ -1270,27 +1270,27 @@
           const pids = Object.keys(byPid || {});
           if (!pids.length) return;
           document.getElementById('chartToggleRow').style.display = 'flex';
-          const top5 = pids
+          const allParticipants = pids
             .map(id => ({ id, nombre: byPid[id].nombre, data: byPid[id].data }))
             .sort((a,b) => {
               const la = a.data[a.data.length-1]?.total || 0;
               const lb = b.data[b.data.length-1]?.total || 0;
               return lb - la;
-            }).slice(0, 6);
-          const allDates = [...new Set(top5.flatMap(p => p.data.map(d => String(d.ts).slice(0,10))))].sort();
+            });
+          const allDates = [...new Set(allParticipants.flatMap(p => p.data.map(d => String(d.ts).slice(0,10))))].sort();
           if (allDates.length < 2) {
             document.getElementById('chartEmptyMsg').style.display = 'block';
             document.getElementById('chartCanvasWrap').style.display = 'none';
             return;
           }
-          const COLORS = ['#f0b429','#22c55e','#3b82f6','#a855f7','#ef4444','#f97316'];
+          const COLORS = ['#f0b429','#22c55e','#3b82f6','#a855f7','#ef4444','#f97316','#06b6d4','#ec4899','#84cc16','#f59e0b','#8b5cf6','#14b8a6'];
           const ctx = document.getElementById('rankingChart').getContext('2d');
           if (_chartInstance) _chartInstance.destroy();
           _chartInstance = new Chart(ctx, {
             type: 'line',
             data: {
               labels: allDates.map(d => new Date(d).toLocaleDateString('es-ES',{day:'2-digit',month:'short'})),
-              datasets: top5.map((p, i) => ({
+              datasets: allParticipants.map((p, i) => ({
                 label: p.nombre,
                 data: allDates.map(date => {
                   const snap = p.data.filter(d => String(d.ts).slice(0,10) <= date).pop();
