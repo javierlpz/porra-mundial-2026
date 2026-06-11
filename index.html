@@ -652,9 +652,10 @@
       .chart-toggle-arrow { font-size: .82rem; color: var(--muted); }
       .chart-panel {
         background: var(--card); border: 1px solid var(--border); border-top: none;
-        border-radius: 0 0 var(--radius) var(--radius); padding: 20px 20px 16px; display: none;
+        border-radius: 0 0 var(--radius) var(--radius); padding: 0 20px; display: block;
+        max-height: 0; overflow: hidden;
       }
-      .chart-panel.open { display: block; }
+      .chart-panel.open { max-height: 400px; padding: 20px 20px 16px; }
       .chart-empty-msg { text-align: center; padding: 28px; color: var(--muted); font-size: .88rem; }
 
       /* ——— Simulator button & modal ——— */
@@ -1261,7 +1262,7 @@
         const isOpen = panel.classList.contains('open');
         panel.classList.toggle('open', !isOpen);
         arrow.textContent = isOpen ? '▼ Ver' : '▲ Ocultar';
-        if (!isOpen && _chartInstance) _chartInstance.resize();
+        if (!isOpen && _chartInstance) setTimeout(() => _chartInstance.resize(), 50);
       }
 
       async function loadHistory() {
