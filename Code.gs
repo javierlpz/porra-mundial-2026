@@ -815,6 +815,7 @@ function getAchievements(pid) {
     pHeaders.forEach((h, j) => p[h] = predRows[i][j]);
     const match = matches[String(p.partido_id)];
     if (!match) continue;
+    if (!match.kickoff) continue;
     const glR = parseInt(match.goles_local), gvR = parseInt(match.goles_visitante);
     const glP = parseInt(p.goles_local),     gvP = parseInt(p.goles_visitante);
     if ([glR, gvR, glP, gvP].some(isNaN)) continue;
