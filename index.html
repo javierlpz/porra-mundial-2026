@@ -772,6 +772,7 @@
         .nav-links.mobile-open { display: flex !important; }
         .nav-links a { padding: 10px 14px !important; font-size: .9rem !important; width: 100%; border-radius: 8px; }
         #mobileUserRow { display: flex !important; }
+        .col-progreso { display: none !important; }
       }
       @media (max-width: 600px) {
         .hamburger  { display: block !important; }
@@ -1076,7 +1077,7 @@
             <th>#</th>
             <th></th>
             <th>Participante</th>
-            <th>Progreso</th>
+            <th class="col-progreso">Progreso</th>
             <th>Puntos</th>
           </tr></thead>
           <tbody>`;
@@ -1089,7 +1090,7 @@
             <td class="rank-pos">${p.pos}</td>
             <td class="rank-medal">${medal}</td>
             <td class="rank-name"><a href="perfil.html?pid=${escHtml(p.participante_id)}">${escHtml(p.nombre)}</a></td>
-            <td class="rank-bar-wrap">
+            <td class="rank-bar-wrap col-progreso">
               <div class="rank-bar">
                 <div class="rank-bar-fill" style="width:${bar}%"></div>
               </div>
@@ -1250,6 +1251,8 @@
         'Cape Verde':'🇨🇻','Mozambique':'🇲🇿','Zambia':'🇿🇲','Angola':'🇦🇴',
         // Oceanía
         'New Zealand':'🇳🇿',
+        'Haiti':'🇭🇹','Bosnia-H.':'🇧🇦','Curaçao':'🇨🇼',
+        'Sweden':'🇸🇪','Norway':'🇳🇴',
       };
       function flagEmoji(name) {
         if (!name) return "🏳️";
