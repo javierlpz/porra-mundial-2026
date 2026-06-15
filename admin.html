@@ -209,7 +209,7 @@
 <div class="page" id="authGate">
   <div class="auth-title">🔐 Acceso Admin</div>
   <div class="auth-sub">Introduce el PIN de administrador para continuar</div>
-  <input type="password" class="auth-input" id="adminPin" placeholder="· · · ·" maxlength="8"
+  <input type="password" class="auth-input" id="adminPin" placeholder="· · · ·"
     onkeydown="if(event.key==='Enter')checkAdminPin()" />
   <button class="auth-btn" onclick="checkAdminPin()">Entrar</button>
   <div class="auth-error" id="authError"></div>
@@ -275,7 +275,7 @@
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxmreAnz7xl9COTf3a_g1rczwNHerPMmSGst1GLPCC5EVMCONEB6xlkdMsQ-ZejVA-VqA/exec";
 
   // ─── Auth ───
-  const ADMIN_PIN = "2901admin";
+  const ADMIN_PIN = "2901";
   var _authed = false;
 
   function checkAdminPin() {
