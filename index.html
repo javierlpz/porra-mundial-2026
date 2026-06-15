@@ -708,6 +708,72 @@
       .consensus-label { display:flex; gap:16px; font-size:.78rem; }
       .picks-list { margin-top:10px; }
       .picks-list-title { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:6px; }
+
+      /* ——— Live question popup ——— */
+      .lq-overlay {
+        position: fixed; inset: 0;
+        background: rgba(7,9,15,.88); backdrop-filter: blur(10px);
+        z-index: 300; display: flex; align-items: center; justify-content: center; padding: 20px;
+      }
+      .lq-overlay.hidden { display: none; }
+      .lq-modal {
+        background: var(--card); border: 1px solid rgba(240,180,41,.35);
+        border-radius: 20px; padding: 28px 24px 30px; width: 100%; max-width: 400px;
+        box-shadow: 0 0 40px rgba(240,180,41,.12);
+        animation: lq-in .25s ease;
+      }
+      @keyframes lq-in {
+        from { opacity: 0; transform: scale(.94) translateY(10px); }
+        to   { opacity: 1; transform: scale(1)  translateY(0); }
+      }
+      .lq-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: rgba(240,180,41,.15); border: 1px solid rgba(240,180,41,.3);
+        color: var(--gold); border-radius: 20px; padding: 4px 12px;
+        font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+        margin-bottom: 14px;
+      }
+      .lq-badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); animation: lq-pulse 1.2s ease-in-out infinite; }
+      @keyframes lq-pulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+      .lq-question {
+        font-family: "Bebas Neue", cursive; font-size: 1.55rem; letter-spacing: .04em;
+        line-height: 1.2; margin-bottom: 6px; color: var(--text);
+      }
+      .lq-pts {
+        font-size: .78rem; color: var(--muted); margin-bottom: 22px;
+      }
+      .lq-pts strong { color: var(--gold); }
+      .lq-options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+      .lq-option {
+        background: var(--surface); border: 1.5px solid var(--border);
+        border-radius: 12px; padding: 13px 16px;
+        font-family: inherit; font-size: .95rem; color: var(--text);
+        cursor: pointer; text-align: left; transition: all .18s;
+      }
+      .lq-option:hover { border-color: var(--gold); color: var(--gold); background: rgba(240,180,41,.07); }
+      .lq-option.selected { border-color: var(--gold); background: rgba(240,180,41,.13); color: var(--gold); font-weight: 600; }
+      .lq-option.correct  { border-color: var(--green); background: rgba(74,222,128,.12); color: var(--green); }
+      .lq-option.wrong    { border-color: var(--red);   background: rgba(248,113,113,.1);  color: var(--red); opacity: .7; }
+      .lq-actions { display: flex; gap: 10px; }
+      .lq-btn-send {
+        flex: 1; background: var(--gold); border: none; border-radius: 10px;
+        padding: 12px; font-family: "Bebas Neue", cursive; font-size: 1.05rem;
+        letter-spacing: .06em; color: #0a0c10; cursor: pointer; transition: opacity .2s;
+      }
+      .lq-btn-send:disabled { opacity: .4; cursor: not-allowed; }
+      .lq-btn-send:not(:disabled):hover { opacity: .85; }
+      .lq-btn-skip {
+        background: none; border: 1px solid var(--border); border-radius: 10px;
+        padding: 12px 16px; font-family: inherit; font-size: .85rem; color: var(--muted);
+        cursor: pointer; transition: all .18s;
+      }
+      .lq-btn-skip:hover { border-color: var(--muted); color: var(--text); }
+      .lq-result-msg {
+        text-align: center; padding: 8px 0 4px;
+        font-size: .92rem; font-weight: 600; display: none;
+      }
+      .lq-result-msg.correct { color: var(--green); }
+      .lq-result-msg.wrong   { color: var(--red); }
       .picks-row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid var(--border); font-size:.82rem; }
       .picks-row:last-child { border-bottom:none; }
       .picks-score { font-family:"Bebas Neue",cursive; font-size:1rem; color:var(--gold); }
@@ -949,6 +1015,21 @@
         </div>
         <div class="picks-modal-body" id="picksModalBody">
           <p style="color:var(--muted);font-size:.85rem">Cargando...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ——— Live question popup ——— -->
+    <div class="lq-overlay hidden" id="lqOverlay">
+      <div class="lq-modal">
+        <div class="lq-badge">⚡ Pregunta en vivo</div>
+        <div class="lq-question" id="lqQuestion">—</div>
+        <div class="lq-pts">Acierta y ganas <strong id="lqPts">+1 pt</strong></div>
+        <div class="lq-options" id="lqOptions"></div>
+        <div class="lq-result-msg" id="lqResultMsg"></div>
+        <div class="lq-actions" id="lqActions">
+          <button class="lq-btn-send" id="lqBtnSend" onclick="submitLiveAnswer()" disabled>Enviar respuesta</button>
+          <button class="lq-btn-skip" onclick="closeLiveQuestion()">Ahora no</button>
         </div>
       </div>
     </div>
@@ -1453,7 +1534,85 @@
         }
       }
 
+      // ─── Pregunta en vivo ───
+      var _lqId       = null;
+      var _lqSelected = null;
+
+      async function checkLiveQuestion() {
+        try {
+          var raw = localStorage.getItem('porra2026_user');
+          var pid = raw ? (JSON.parse(raw).id || '') : '';
+          var res = await api({ action: 'getActiveLiveQuestion', pid: pid });
+          if (!res.question) return;
+          if (res.answered)  return; // ya respondió en sesión anterior
+          showLiveQuestion(res.question);
+        } catch(_) {}
+      }
+
+      function showLiveQuestion(q) {
+        _lqId       = q.id;
+        _lqSelected = null;
+
+        document.getElementById('lqQuestion').textContent = q.pregunta;
+        document.getElementById('lqPts').textContent = '+' + q.puntos + ' pt' + (q.puntos !== 1 ? 's' : '');
+
+        var container = document.getElementById('lqOptions');
+        container.innerHTML = '';
+        q.opciones.forEach(function(op) {
+          var btn = document.createElement('button');
+          btn.className = 'lq-option';
+          btn.textContent = op;
+          btn.onclick = function() { selectLiveOption(op, btn); };
+          container.appendChild(btn);
+        });
+
+        document.getElementById('lqBtnSend').disabled = true;
+        document.getElementById('lqResultMsg').style.display = 'none';
+        document.getElementById('lqActions').style.display = 'flex';
+        document.getElementById('lqOverlay').classList.remove('hidden');
+      }
+
+      function selectLiveOption(value, el) {
+        _lqSelected = value;
+        document.querySelectorAll('.lq-option').forEach(function(b) { b.classList.remove('selected'); });
+        el.classList.add('selected');
+        document.getElementById('lqBtnSend').disabled = false;
+      }
+
+      async function submitLiveAnswer() {
+        if (!_lqSelected || !_lqId) return;
+        var raw = localStorage.getItem('porra2026_user');
+        if (!raw) { closeLiveQuestion(); return; }
+        var pid = JSON.parse(raw).id;
+
+        document.getElementById('lqBtnSend').disabled = true;
+        try {
+          var res = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'saveLiveAnswer', qid: _lqId, pid: pid, respuesta: _lqSelected }),
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+          });
+          var data = await res.json();
+          if (data.error) { alert(data.error); return; }
+          // Feedback visual de éxito
+          document.getElementById('lqActions').style.display = 'none';
+          document.querySelectorAll('.lq-option').forEach(function(b) { b.style.pointerEvents = 'none'; });
+          var msg = document.getElementById('lqResultMsg');
+          msg.textContent = '✅ ¡Respuesta guardada! Sabrás si acertaste al final del partido.';
+          msg.className = 'lq-result-msg correct';
+          msg.style.display = 'block';
+          setTimeout(closeLiveQuestion, 2800);
+        } catch(_) {
+          document.getElementById('lqBtnSend').disabled = false;
+        }
+      }
+
+      function closeLiveQuestion() {
+        document.getElementById('lqOverlay').classList.add('hidden');
+      }
+
       refresh();
+      checkLiveQuestion(); // lanza el popup si hay pregunta activa
       setInterval(refresh, 60_000); // cada 60 segundos
 
       // ─── Menú hamburguesa ───
