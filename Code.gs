@@ -779,6 +779,48 @@ function getProfile(pid) {
     { key: 'estrella',  icon: '⭐', label: 'Equipo Estrella',      pred: equipoEstrella, status: equipoEstrella ? 'active' : 'empty',    pts_posibles: null, pts_ganados: historial.reduce((s, h) => s + (h.ptsEstrella || 0), 0) }
   ];
 
+  // Añadir preguntas en vivo resueltas
+  try {
+    const qSheet = getOrCreateSheet('Preguntas_Vivo',
+      ['id','partido_id','pregunta','opciones','puntos','respuesta_correcta','estado','creada']);
+    const qRows = qSheet.getDataRange().getValues();
+    const qH    = qRows[0];
+
+    const rSheet = getOrCreateSheet('Respuestas_Vivo',
+      ['pregunta_id','participante_id','respuesta','timestamp']);
+    const rRows = rSheet.getDataRange().getValues();
+    const rH    = rRows[0];
+
+    // Solo preguntas resueltas
+    for (let i = 1; i < qRows.length; i++) {
+      if (String(qRows[i][qH.indexOf('estado')]) !== 'resuelta') continue;
+      const qid      = String(qRows[i][qH.indexOf('id')]);
+      const pregunta = String(qRows[i][qH.indexOf('pregunta')]);
+      const correcta = String(qRows[i][qH.indexOf('respuesta_correcta')]);
+      const puntos   = Number(qRows[i][qH.indexOf('puntos')]) || 1;
+
+      // Buscar respuesta del usuario
+      let userResp = null;
+      for (let j = 1; j < rRows.length; j++) {
+        if (String(rRows[j][rH.indexOf('pregunta_id')])    !== qid)         continue;
+        if (String(rRows[j][rH.indexOf('participante_id')]) !== String(pid)) continue;
+        userResp = String(rRows[j][rH.indexOf('respuesta')]);
+        break;
+      }
+
+      const acerto = userResp !== null && userResp === correcta;
+      especiales.push({
+        key:          'vivo_' + qid,
+        icon:         '⚡',
+        label:        pregunta,
+        pred:         userResp !== null ? userResp + ' (correcta: ' + correcta + ')' : null,
+        status:       userResp === null ? 'empty' : acerto ? 'hit' : 'miss',
+        pts_posibles: puntos,
+        pts_ganados:  acerto ? puntos : 0
+      });
+    }
+  } catch(e) {}
+
   return {
     pid, nombre, pos,
     total: userRank.total || 0,
