@@ -444,9 +444,28 @@
             : e.status === 'pending' || e.status === 'active' ? `+${e.pts_posibles} posibles`
             : '0 pts';
           const ptsClass = (e.pts_ganados || 0) === 0 ? 'zero' : '';
+
+          // Preguntas en vivo: pred viene como "Tu respuesta (correcta: X)"
+          let predDisplay;
+          if (e.key && e.key.startsWith('vivo_') && e.pred) {
+            const match = e.pred.match(/^(.+?) \(correcta: (.+?)\)$/);
+            if (match) {
+              const userR    = match[1];
+              const correctR = match[2];
+              const acerto   = userR === correctR;
+              predDisplay = acerto
+                ? `<span style="font-weight:600">${escHtml(userR)}</span>`
+                : `<span style="font-weight:600;color:var(--red)">${escHtml(userR)}</span> <span style="color:var(--muted);font-size:.78rem">→ ${escHtml(correctR)}</span>`;
+            } else {
+              predDisplay = escHtml(e.pred);
+            }
+          } else {
+            predDisplay = e.pred ? escHtml(e.pred) : '<span style="color:var(--muted)">—</span>';
+          }
+
           return `<tr>
             <td><span style="margin-right:6px">${e.icon}</span>${escHtml(e.label)}</td>
-            <td style="font-weight:600">${e.pred ? escHtml(e.pred) : '<span style="color:var(--muted)">—</span>'}</td>
+            <td style="font-weight:600">${predDisplay}</td>
             <td><span class="spec-status ${e.status}">${statusLabels[e.status]||'—'}</span></td>
             <td class="spec-pts ${ptsClass}">${ptsDisplay}</td>
           </tr>`;
