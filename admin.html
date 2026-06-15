@@ -261,6 +261,16 @@
         <label class="form-label">Puntos si acierta</label>
         <input type="number" class="form-input" id="fPuntos" value="1" min="1" max="5" />
       </div>
+      <div class="form-group">
+        <label class="form-label">Tiempo para responder</label>
+        <select class="form-select" id="fMinutos" style="margin-bottom:0">
+          <option value="5">5 minutos</option>
+          <option value="10" selected>10 minutos</option>
+          <option value="15">15 minutos</option>
+          <option value="20">20 minutos</option>
+          <option value="30">30 minutos</option>
+        </select>
+      </div>
     </div>
     <div class="pts-hint">Normalmente +1. Puedes subir hasta +5 para preguntas más difíciles.</div>
 
@@ -404,6 +414,7 @@
       card.innerHTML = ''
         + '<div class="aq-header">'
         +   '<span class="status-active">Pregunta activa</span>'
+        +   (data.question.cierraEn ? '<span id="adminCountdown" style="font-size:.8rem;color:var(--gold);font-weight:600"></span>' : '')
         + '</div>'
         + '<div class="aq-text">' + escHtml(data.question.pregunta) + '</div>'
         + '<div class="aq-meta" style="margin-top:6px">'
@@ -422,6 +433,9 @@
         +   '✅ Confirmar y repartir puntos'
         + '</button>'
         + '<button class="cancel-btn" onclick="cancelQuestion()">✕ Cancelar pregunta sin resolver</button>';
+
+      // Arrancar countdown si hay cierre definido
+      if (data.question.cierraEn) startAdminCountdown(data.question.cierraEn);
 
     } catch(e) {
       card.innerHTML = '<div style="color:var(--red);font-size:.84rem">Error cargando estado.</div>';
@@ -498,7 +512,8 @@
         partido_id: partidoId,
         pregunta:   pregunta,
         opciones:   ops.join(','),
-        puntos:     puntos
+        puntos:     puntos,
+        minutos:    parseInt(document.getElementById('fMinutos').value) || 10
       });
       if (res.error) {
         toast('❌ ' + res.error, 'err');
@@ -518,6 +533,29 @@
       btn.disabled = false;
       btn.textContent = '⚡ Lanzar pregunta';
     }
+  }
+
+  // ─── Countdown timer ───
+  var _countdownInterval = null;
+  function startAdminCountdown(cierraEn) {
+    clearInterval(_countdownInterval);
+    var end = new Date(cierraEn).getTime();
+    function tick() {
+      var el = document.getElementById('adminCountdown');
+      if (!el) { clearInterval(_countdownInterval); return; }
+      var diff = Math.max(0, Math.floor((end - Date.now()) / 1000));
+      if (diff <= 0) {
+        el.textContent = '⏱ Tiempo agotado';
+        el.style.color = 'var(--red)';
+        clearInterval(_countdownInterval);
+        return;
+      }
+      var m = Math.floor(diff / 60);
+      var s = diff % 60;
+      el.textContent = '⏱ ' + m + ':' + String(s).padStart(2, '0') + ' restantes';
+    }
+    tick();
+    _countdownInterval = setInterval(tick, 1000);
   }
 
   function escHtml(s) {

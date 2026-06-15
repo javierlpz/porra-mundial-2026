@@ -1024,7 +1024,7 @@
       <div class="lq-modal">
         <div class="lq-badge">⚡ Pregunta en vivo</div>
         <div class="lq-question" id="lqQuestion">—</div>
-        <div class="lq-pts">Acierta y ganas <strong id="lqPts">+1 pt</strong></div>
+        <div class="lq-pts">Acierta y ganas <strong id="lqPts">+1 pt</strong> · <span id="lqCountdown" style="color:var(--gold);font-weight:600"></span></div>
         <div class="lq-options" id="lqOptions"></div>
         <div class="lq-result-msg" id="lqResultMsg"></div>
         <div class="lq-actions" id="lqActions">
@@ -1534,9 +1534,9 @@
         }
       }
 
-      // ─── Pregunta en vivo ───
       var _lqId       = null;
       var _lqSelected = null;
+      var _lqCountdownInterval = null;
 
       async function checkLiveQuestion() {
         try {
@@ -1544,7 +1544,7 @@
           var pid = raw ? (JSON.parse(raw).id || '') : '';
           var res = await api({ action: 'getActiveLiveQuestion', pid: pid });
           if (!res.question) return;
-          if (res.answered)  return; // ya respondió en sesión anterior
+          if (res.answered)  return;
           showLiveQuestion(res.question);
         } catch(_) {}
       }
@@ -1570,6 +1570,39 @@
         document.getElementById('lqResultMsg').style.display = 'none';
         document.getElementById('lqActions').style.display = 'flex';
         document.getElementById('lqOverlay').classList.remove('hidden');
+
+        // Arrancar countdown si hay cierre
+        startLqCountdown(q.cierraEn);
+      }
+
+      function startLqCountdown(cierraEn) {
+        clearInterval(_lqCountdownInterval);
+        var el = document.getElementById('lqCountdown');
+        if (!cierraEn || !el) { if(el) el.textContent = ''; return; }
+        var end = new Date(cierraEn).getTime();
+        function tick() {
+          var diff = Math.max(0, Math.floor((end - Date.now()) / 1000));
+          if (diff <= 0) {
+            el.textContent = '⏱ Tiempo agotado';
+            el.style.color = 'var(--red)';
+            // Bloquear opciones y botón
+            document.querySelectorAll('.lq-option').forEach(function(b) { b.style.pointerEvents = 'none'; b.style.opacity = '.4'; });
+            document.getElementById('lqBtnSend').disabled = true;
+            var msg = document.getElementById('lqResultMsg');
+            msg.textContent = '⏱ El tiempo para responder ha terminado.';
+            msg.className = 'lq-result-msg wrong';
+            msg.style.display = 'block';
+            clearInterval(_lqCountdownInterval);
+            setTimeout(closeLiveQuestion, 3000);
+            return;
+          }
+          var m = Math.floor(diff / 60);
+          var s = diff % 60;
+          el.textContent = '⏱ ' + m + ':' + String(s).padStart(2, '0');
+          el.style.color = diff <= 30 ? 'var(--red)' : 'var(--gold)';
+        }
+        tick();
+        _lqCountdownInterval = setInterval(tick, 1000);
       }
 
       function selectLiveOption(value, el) {
@@ -1608,6 +1641,7 @@
       }
 
       function closeLiveQuestion() {
+        clearInterval(_lqCountdownInterval);
         document.getElementById('lqOverlay').classList.add('hidden');
       }
 

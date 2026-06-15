@@ -1271,6 +1271,10 @@ function getActiveLiveQuestion(pid) {
   const liveStates = ['IN_PLAY', 'PAUSED', 'HALFTIME'];
   if (!match || !liveStates.includes(String(match.estado))) return { question: null };
 
+  // Verificar que no ha expirado el tiempo de respuesta
+  const cierraEn = question.cierra_en ? new Date(question.cierra_en) : null;
+  if (cierraEn && new Date() > cierraEn) return { question: null, expired: true };
+
   // Verificar si el usuario ya respondió
   let answered = false;
   let userAnswer = null;
@@ -1291,11 +1295,12 @@ function getActiveLiveQuestion(pid) {
 
   return {
     question: {
-      id:       question.id,
-      pregunta: question.pregunta,
-      opciones: String(question.opciones).split(',').map(o => o.trim()),
-      puntos:   Number(question.puntos) || 1,
-      partido:  { local: match.equipo_local, visitante: match.equipo_visitante }
+      id:        question.id,
+      pregunta:  question.pregunta,
+      opciones:  String(question.opciones).split(',').map(o => o.trim()),
+      puntos:    Number(question.puntos) || 1,
+      cierraEn:  question.cierra_en ? new Date(question.cierra_en).toISOString() : null,
+      partido:   { local: match.equipo_local, visitante: match.equipo_visitante }
     },
     answered,
     userAnswer
@@ -1322,6 +1327,10 @@ function saveLiveAnswer(data) {
   }
   if (!question)                              return { error: 'Pregunta no encontrada' };
   if (String(question.estado) !== 'activa')  return { error: 'Esta pregunta ya no está activa' };
+
+  // Verificar que no ha expirado el tiempo
+  const cierraEn = question.cierra_en ? new Date(question.cierra_en) : null;
+  if (cierraEn && new Date() > cierraEn)     return { error: 'El tiempo para responder ha terminado' };
 
   const rSheet = getOrCreateSheet('Respuestas_Vivo',
     ['pregunta_id','participante_id','respuesta','timestamp']);
@@ -1357,15 +1366,18 @@ function createLiveQuestion(data) {
   }
 
   const id = Utilities.getUuid();
+  const minutos = Number(data.minutos) || 10;
+  const cierraEn = new Date(Date.now() + minutos * 60 * 1000).toISOString();
   qSheet.appendRow([
     id,
     data.partido_id  || '',
     data.pregunta    || '',
-    data.opciones    || '',   // "Sí,No" o "España,Marruecos,Ninguno"
+    data.opciones    || '',
     Number(data.puntos) || 1,
-    '',                       // respuesta_correcta — se rellena al resolver
+    '',
     'activa',
-    new Date().toISOString()
+    new Date().toISOString(),
+    cierraEn
   ]);
   return { success: true, id };
 }
@@ -1561,7 +1573,7 @@ function setup() {
                                 'pts_grupos','pts_elim','pts_spec','timestamp'],
     'Partido_Doble':           ['participante_id','partido_id','timestamp'],
     'Goleadores':              ['jugador','equipo','goles','asistencias','partidos','timestamp'],
-    'Preguntas_Vivo':          ['id','partido_id','pregunta','opciones','puntos','respuesta_correcta','estado','creada'],
+    'Preguntas_Vivo':          ['id','partido_id','pregunta','opciones','puntos','respuesta_correcta','estado','creada','cierra_en'],
     'Respuestas_Vivo':         ['pregunta_id','participante_id','respuesta','timestamp']
   };
 
