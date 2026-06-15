@@ -1133,6 +1133,44 @@ function calculatePoints(pid) {
     ptsSpec += 6;
   }
 
+  // Puntos de preguntas en vivo (resueltas y acertadas)
+  try {
+    const qSheet = getOrCreateSheet('Preguntas_Vivo',
+      ['id','partido_id','pregunta','opciones','puntos','respuesta_correcta','estado','creada']);
+    const qRows = qSheet.getDataRange().getValues();
+    const qH    = qRows[0];
+
+    const rSheet = getOrCreateSheet('Respuestas_Vivo',
+      ['pregunta_id','participante_id','respuesta','timestamp']);
+    const rRows = rSheet.getDataRange().getValues();
+    const rH    = rRows[0];
+
+    // Construir mapa de preguntas resueltas: id → { respuesta_correcta, puntos }
+    const resolvedQ = {};
+    for (let i = 1; i < qRows.length; i++) {
+      if (String(qRows[i][qH.indexOf('estado')]) === 'resuelta') {
+        const qid = String(qRows[i][qH.indexOf('id')]);
+        resolvedQ[qid] = {
+          correcta: String(qRows[i][qH.indexOf('respuesta_correcta')]),
+          puntos:   Number(qRows[i][qH.indexOf('puntos')]) || 1
+        };
+      }
+    }
+
+    // Sumar puntos si el usuario acertó
+    for (let i = 1; i < rRows.length; i++) {
+      if (String(rRows[i][rH.indexOf('participante_id')]) !== String(pid)) continue;
+      const qid = String(rRows[i][rH.indexOf('pregunta_id')]);
+      const q   = resolvedQ[qid];
+      if (!q) continue;
+      if (String(rRows[i][rH.indexOf('respuesta')]) === q.correcta) {
+        ptsSpec += q.puntos;
+      }
+    }
+  } catch(e) {
+    // Si las hojas no existen aún, ignorar
+  }
+
   return { grupos: ptsGrupos, elim: ptsElim, spec: ptsSpec, total: ptsGrupos + ptsElim + ptsSpec };
 }
 
@@ -1317,34 +1355,29 @@ function resolveLiveQuestion(data) {
   qSheet.getRange(qRowNum, qH.indexOf('respuesta_correcta') + 1).setValue(data.respuesta_correcta);
   qSheet.getRange(qRowNum, qH.indexOf('estado') + 1).setValue('resuelta');
 
-  // Repartir puntos a quienes acertaron
+  // Contar aciertos
   const rSheet = getOrCreateSheet('Respuestas_Vivo',
     ['pregunta_id','participante_id','respuesta','timestamp']);
   const rRows = rSheet.getDataRange().getValues();
   const rH    = rRows[0];
 
-  const pSheet  = getSheet('Puntuaciones');
-  const pRows   = pSheet.getDataRange().getValues();
-  const pH      = pRows[0];
-  const totalCol = pH.indexOf('total') + 1;
-  const specCol  = pH.indexOf('pts_especiales') + 1;
-
   let aciertos = 0;
+  const acertaron = [];
   for (let i = 1; i < rRows.length; i++) {
     if (String(rRows[i][rH.indexOf('pregunta_id')]) !== String(data.qid)) continue;
     if (String(rRows[i][rH.indexOf('respuesta')]) !== String(data.respuesta_correcta)) continue;
-
-    const pid = String(rRows[i][rH.indexOf('participante_id')]);
-    // Sumar puntos en Puntuaciones
-    for (let j = 1; j < pRows.length; j++) {
-      if (String(pRows[j][0]) !== pid) continue;
-      const currentTotal = Number(pRows[j][pH.indexOf('total')]) || 0;
-      const currentSpec  = Number(pRows[j][pH.indexOf('pts_especiales')]) || 0;
-      pSheet.getRange(j + 1, totalCol).setValue(currentTotal + puntos);
-      pSheet.getRange(j + 1, specCol).setValue(currentSpec  + puntos);
-      break;
-    }
+    acertaron.push(String(rRows[i][rH.indexOf('participante_id')]));
     aciertos++;
+  }
+
+  // Recalcular puntuaciones de quienes acertaron para que se incluyan los pts de vivo
+  const partRows = getSheet('Participantes').getDataRange().getValues();
+  for (let i = 1; i < partRows.length; i++) {
+    const pid    = String(partRows[i][0]);
+    const nombre = String(partRows[i][1]);
+    if (!acertaron.includes(pid)) continue;
+    const pts = calculatePoints(pid);
+    updatePuntuaciones(pid, nombre, pts);
   }
 
   return { success: true, aciertos, puntos };
