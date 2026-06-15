@@ -196,6 +196,38 @@
     .refresh-btn:hover { border-color:var(--gold); color:var(--gold); }
 
     .divider { border:none; border-top:1px solid var(--border); margin:24px 0; }
+      /* ——— WhatsApp modal ——— */
+      .wa-overlay {
+        position:fixed; inset:0; background:rgba(7,9,15,.88); backdrop-filter:blur(10px);
+        z-index:200; display:flex; align-items:center; justify-content:center; padding:20px;
+      }
+      .wa-overlay.hidden { display:none; }
+      .wa-modal {
+        background:var(--card); border:1px solid rgba(37,211,102,.3);
+        border-radius:20px; padding:28px 24px; width:100%; max-width:420px;
+        box-shadow:0 0 40px rgba(37,211,102,.08);
+        animation:lq-in .25s ease;
+      }
+      .wa-title { font-family:"Bebas Neue",cursive; font-size:1.5rem; letter-spacing:.05em; margin-bottom:4px; }
+      .wa-sub   { font-size:.82rem; color:var(--muted); margin-bottom:18px; }
+      .wa-msg   {
+        background:var(--surface); border:1px solid var(--border); border-radius:12px;
+        padding:16px; font-size:.88rem; line-height:1.6; color:var(--text);
+        white-space:pre-wrap; margin-bottom:18px; user-select:all;
+      }
+      .wa-actions { display:flex; gap:10px; }
+      .wa-copy-btn {
+        flex:1; background:#25d366; border:none; border-radius:10px;
+        padding:12px; font-family:"Bebas Neue",cursive; font-size:1.05rem; letter-spacing:.05em;
+        color:#fff; cursor:pointer; transition:opacity .2s;
+      }
+      .wa-copy-btn:hover { opacity:.85; }
+      .wa-close-btn {
+        background:none; border:1px solid var(--border); border-radius:10px;
+        padding:12px 16px; font-family:inherit; font-size:.85rem; color:var(--muted);
+        cursor:pointer; transition:all .18s;
+      }
+      .wa-close-btn:hover { border-color:var(--muted); color:var(--text); }
   </style>
 </head>
 <body>
@@ -278,6 +310,19 @@
   </div>
 
 </div>
+
+    <!-- WhatsApp modal -->
+    <div class="wa-overlay hidden" id="waOverlay">
+      <div class="wa-modal">
+        <div class="wa-title">📲 Avisa al grupo</div>
+        <div class="wa-sub">Copia este mensaje y pégalo en el grupo de WhatsApp</div>
+        <div class="wa-msg" id="waText"></div>
+        <div class="wa-actions">
+          <button class="wa-copy-btn" id="waCopyBtn" onclick="copyWaMsg()">📋 Copiar</button>
+          <button class="wa-close-btn" onclick="closeWaModal()">Cerrar</button>
+        </div>
+      </div>
+    </div>
 
 <div id="toast"></div>
 
@@ -522,6 +567,9 @@
         return;
       }
       toast('✅ Pregunta lanzada. Ya aparece en el pop-up.', 'ok');
+      // Generar mensaje de WhatsApp
+      var minutos = parseInt(document.getElementById('fMinutos').value) || 10;
+      showWhatsappMsg(pregunta, minutos);
       // Reset form
       document.getElementById('fPregunta').value = '';
       document.getElementById('fOpciones').value = '';
@@ -556,6 +604,31 @@
     }
     tick();
     _countdownInterval = setInterval(tick, 1000);
+  }
+
+  // ─── WhatsApp message modal ───
+  function showWhatsappMsg(pregunta, minutos) {
+    var url  = 'https://clinicadentalmadrid.net/porra2026/';
+    var text = '⚡ *¡PREGUNTA EN VIVO!*\n\n'
+             + '❓ ' + pregunta + '\n\n'
+             + '⏱ Tienes *' + minutos + ' minutos* para responder.\n'
+             + '¡Entra ya en la porra! 👇\n'
+             + url;
+    document.getElementById('waText').textContent = text;
+    document.getElementById('waOverlay').classList.remove('hidden');
+  }
+
+  function copyWaMsg() {
+    var text = document.getElementById('waText').textContent;
+    navigator.clipboard.writeText(text).then(function() {
+      var btn = document.getElementById('waCopyBtn');
+      btn.textContent = '✅ ¡Copiado!';
+      setTimeout(function() { btn.textContent = '📋 Copiar'; }, 2000);
+    });
+  }
+
+  function closeWaModal() {
+    document.getElementById('waOverlay').classList.add('hidden');
   }
 
   function escHtml(s) {
