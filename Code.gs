@@ -79,7 +79,9 @@ function doGet(e) {
       case 'getProfile':          return jsonResponse(getProfile(e.parameter.pid));
       case 'getAchievements':     return jsonResponse(getAchievements(e.parameter.pid));
       case 'getJoker':            return jsonResponse(getJoker(e.parameter.pid));
-      case 'getTopScorers':       return jsonResponse(getTopScorers());
+      case 'getTopScorers':         return jsonResponse(getTopScorers());
+      case 'getActiveLiveQuestion': return jsonResponse(getActiveLiveQuestion(e.parameter.pid));
+      case 'getLiveAnswers':        return jsonResponse(getLiveAnswers(e.parameter.qid));
       default: return jsonResponse({ error: 'Acción desconocida: ' + action });
     }
   } catch (err) {
@@ -96,7 +98,11 @@ function doPost(e) {
       case 'register':     return jsonResponse(registerUser(data));
       case 'savePreds':    return jsonResponse(savePredictions(data));
       case 'saveSpecials': return jsonResponse(saveSpecialPredictions(data));
-      case 'saveJoker':    return jsonResponse(saveJoker(data));
+      case 'saveJoker':         return jsonResponse(saveJoker(data));
+      case 'saveLiveAnswer':    return jsonResponse(saveLiveAnswer(data));
+      case 'createLiveQuestion':return jsonResponse(createLiveQuestion(data));
+      case 'resolveLiveQuestion':return jsonResponse(resolveLiveQuestion(data));
+      case 'deleteLiveQuestion':return jsonResponse(deleteLiveQuestion(data));
       default: return jsonResponse({ error: 'Acción desconocida: ' + data.action });
     }
   } catch (err) {
@@ -1143,6 +1149,253 @@ function updatePuntuaciones(pid, nombre, pts) {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  PREGUNTAS EN VIVO
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Devuelve la pregunta activa si:
+ *  - existe una fila con estado = 'activa' en Preguntas_Vivo
+ *  - el partido asociado está en juego (estado IN_PLAY o PAUSED en Partidos)
+ *  - el usuario (pid) aún no ha respondido
+ * Incluye si el usuario ya respondió (para que el frontend no vuelva a mostrarla).
+ */
+function getActiveLiveQuestion(pid) {
+  const qSheet = getOrCreateSheet('Preguntas_Vivo',
+    ['id','partido_id','pregunta','opciones','puntos','respuesta_correcta','estado','creada']);
+  const qRows = qSheet.getDataRange().getValues();
+  const qH    = qRows[0];
+
+  // Buscar primera pregunta activa
+  let question = null;
+  for (let i = 1; i < qRows.length; i++) {
+    if (String(qRows[i][qH.indexOf('estado')]) === 'activa') {
+      question = {};
+      qH.forEach((h, j) => question[h] = qRows[i][j]);
+      break;
+    }
+  }
+  if (!question) return { question: null };
+
+  // Verificar que el partido está en juego
+  const matchSheet = getSheet('Partidos');
+  const matchRows  = matchSheet.getDataRange().getValues();
+  const mH         = matchRows[0];
+  let match = null;
+  for (let i = 1; i < matchRows.length; i++) {
+    if (String(matchRows[i][mH.indexOf('id')]) === String(question.partido_id)) {
+      match = {};
+      mH.forEach((h, j) => match[h] = matchRows[i][j]);
+      break;
+    }
+  }
+  const liveStates = ['IN_PLAY', 'PAUSED', 'HALFTIME'];
+  if (!match || !liveStates.includes(String(match.estado))) return { question: null };
+
+  // Verificar si el usuario ya respondió
+  let answered = false;
+  let userAnswer = null;
+  if (pid) {
+    const rSheet = getOrCreateSheet('Respuestas_Vivo',
+      ['pregunta_id','participante_id','respuesta','timestamp']);
+    const rRows = rSheet.getDataRange().getValues();
+    const rH    = rRows[0];
+    for (let i = 1; i < rRows.length; i++) {
+      if (String(rRows[i][rH.indexOf('pregunta_id')])    === String(question.id) &&
+          String(rRows[i][rH.indexOf('participante_id')]) === String(pid)) {
+        answered   = true;
+        userAnswer = rRows[i][rH.indexOf('respuesta')];
+        break;
+      }
+    }
+  }
+
+  return {
+    question: {
+      id:       question.id,
+      pregunta: question.pregunta,
+      opciones: String(question.opciones).split(',').map(o => o.trim()),
+      puntos:   Number(question.puntos) || 1,
+      partido:  { local: match.equipo_local, visitante: match.equipo_visitante }
+    },
+    answered,
+    userAnswer
+  };
+}
+
+/**
+ * Guarda la respuesta de un usuario a la pregunta activa.
+ * Rechaza si ya respondió o si la pregunta ya no está activa.
+ */
+function saveLiveAnswer(data) {
+  const qSheet = getOrCreateSheet('Preguntas_Vivo',
+    ['id','partido_id','pregunta','opciones','puntos','respuesta_correcta','estado','creada']);
+  const qRows = qSheet.getDataRange().getValues();
+  const qH    = qRows[0];
+
+  let question = null;
+  for (let i = 1; i < qRows.length; i++) {
+    if (String(qRows[i][qH.indexOf('id')]) === String(data.qid)) {
+      question = {};
+      qH.forEach((h, j) => question[h] = qRows[i][j]);
+      break;
+    }
+  }
+  if (!question)                              return { error: 'Pregunta no encontrada' };
+  if (String(question.estado) !== 'activa')  return { error: 'Esta pregunta ya no está activa' };
+
+  const rSheet = getOrCreateSheet('Respuestas_Vivo',
+    ['pregunta_id','participante_id','respuesta','timestamp']);
+  const rRows = rSheet.getDataRange().getValues();
+  const rH    = rRows[0];
+
+  for (let i = 1; i < rRows.length; i++) {
+    if (String(rRows[i][rH.indexOf('pregunta_id')])    === String(data.qid) &&
+        String(rRows[i][rH.indexOf('participante_id')]) === String(data.pid)) {
+      return { error: 'Ya has respondido esta pregunta' };
+    }
+  }
+
+  rSheet.appendRow([data.qid, data.pid, data.respuesta, new Date().toISOString()]);
+  return { success: true };
+}
+
+/**
+ * Crea una nueva pregunta en vivo (llamado desde admin.html).
+ * Solo puede haber una pregunta activa a la vez.
+ */
+function createLiveQuestion(data) {
+  const qSheet = getOrCreateSheet('Preguntas_Vivo',
+    ['id','partido_id','pregunta','opciones','puntos','respuesta_correcta','estado','creada']);
+  const qRows = qSheet.getDataRange().getValues();
+  const qH    = qRows[0];
+
+  // Verificar que no hay ya una activa
+  for (let i = 1; i < qRows.length; i++) {
+    if (String(qRows[i][qH.indexOf('estado')]) === 'activa') {
+      return { error: 'Ya hay una pregunta activa. Resuélvela antes de crear otra.' };
+    }
+  }
+
+  const id = Utilities.getUuid();
+  qSheet.appendRow([
+    id,
+    data.partido_id  || '',
+    data.pregunta    || '',
+    data.opciones    || '',   // "Sí,No" o "España,Marruecos,Ninguno"
+    Number(data.puntos) || 1,
+    '',                       // respuesta_correcta — se rellena al resolver
+    'activa',
+    new Date().toISOString()
+  ]);
+  return { success: true, id };
+}
+
+/**
+ * Resuelve una pregunta: marca la correcta, reparte puntos extra y cierra la pregunta.
+ */
+function resolveLiveQuestion(data) {
+  const qSheet = getOrCreateSheet('Preguntas_Vivo',
+    ['id','partido_id','pregunta','opciones','puntos','respuesta_correcta','estado','creada']);
+  const qRows = qSheet.getDataRange().getValues();
+  const qH    = qRows[0];
+
+  let qRowNum = -1;
+  let question = null;
+  for (let i = 1; i < qRows.length; i++) {
+    if (String(qRows[i][qH.indexOf('id')]) === String(data.qid)) {
+      qRowNum  = i + 1;
+      question = {};
+      qH.forEach((h, j) => question[h] = qRows[i][j]);
+      break;
+    }
+  }
+  if (!question) return { error: 'Pregunta no encontrada' };
+
+  const puntos = Number(question.puntos) || 1;
+
+  // Guardar respuesta correcta y cerrar
+  qSheet.getRange(qRowNum, qH.indexOf('respuesta_correcta') + 1).setValue(data.respuesta_correcta);
+  qSheet.getRange(qRowNum, qH.indexOf('estado') + 1).setValue('resuelta');
+
+  // Repartir puntos a quienes acertaron
+  const rSheet = getOrCreateSheet('Respuestas_Vivo',
+    ['pregunta_id','participante_id','respuesta','timestamp']);
+  const rRows = rSheet.getDataRange().getValues();
+  const rH    = rRows[0];
+
+  const pSheet  = getSheet('Puntuaciones');
+  const pRows   = pSheet.getDataRange().getValues();
+  const pH      = pRows[0];
+  const totalCol = pH.indexOf('total') + 1;
+  const specCol  = pH.indexOf('pts_especiales') + 1;
+
+  let aciertos = 0;
+  for (let i = 1; i < rRows.length; i++) {
+    if (String(rRows[i][rH.indexOf('pregunta_id')]) !== String(data.qid)) continue;
+    if (String(rRows[i][rH.indexOf('respuesta')]) !== String(data.respuesta_correcta)) continue;
+
+    const pid = String(rRows[i][rH.indexOf('participante_id')]);
+    // Sumar puntos en Puntuaciones
+    for (let j = 1; j < pRows.length; j++) {
+      if (String(pRows[j][0]) !== pid) continue;
+      const currentTotal = Number(pRows[j][pH.indexOf('total')]) || 0;
+      const currentSpec  = Number(pRows[j][pH.indexOf('pts_especiales')]) || 0;
+      pSheet.getRange(j + 1, totalCol).setValue(currentTotal + puntos);
+      pSheet.getRange(j + 1, specCol).setValue(currentSpec  + puntos);
+      break;
+    }
+    aciertos++;
+  }
+
+  return { success: true, aciertos, puntos };
+}
+
+/**
+ * Cancela/elimina una pregunta activa sin resolver (por si hubo error al crearla).
+ */
+function deleteLiveQuestion(data) {
+  const qSheet = getOrCreateSheet('Preguntas_Vivo',
+    ['id','partido_id','pregunta','opciones','puntos','respuesta_correcta','estado','creada']);
+  const qRows = qSheet.getDataRange().getValues();
+  const qH    = qRows[0];
+
+  for (let i = 1; i < qRows.length; i++) {
+    if (String(qRows[i][qH.indexOf('id')]) === String(data.qid)) {
+      qSheet.getRange(i + 1, qH.indexOf('estado') + 1).setValue('cancelada');
+      return { success: true };
+    }
+  }
+  return { error: 'Pregunta no encontrada' };
+}
+
+/**
+ * Devuelve todas las respuestas de una pregunta (para el panel admin).
+ */
+function getLiveAnswers(qid) {
+  const rSheet = getOrCreateSheet('Respuestas_Vivo',
+    ['pregunta_id','participante_id','respuesta','timestamp']);
+  const rRows = rSheet.getDataRange().getValues();
+  const rH    = rRows[0];
+
+  const partRows = getSheet('Participantes').getDataRange().getValues();
+  const nameMap  = {};
+  for (let i = 1; i < partRows.length; i++) {
+    if (partRows[i][0]) nameMap[String(partRows[i][0])] = partRows[i][1];
+  }
+
+  const answers = [];
+  const tally   = {};
+  for (let i = 1; i < rRows.length; i++) {
+    if (String(rRows[i][rH.indexOf('pregunta_id')]) !== String(qid)) continue;
+    const pid      = String(rRows[i][rH.indexOf('participante_id')]);
+    const respuesta = String(rRows[i][rH.indexOf('respuesta')]);
+    answers.push({ nombre: nameMap[pid] || pid, respuesta });
+    tally[respuesta] = (tally[respuesta] || 0) + 1;
+  }
+  return { answers, tally, total: answers.length };
+}
+
+// ─────────────────────────────────────────────────────────────
 //  SINCRONIZACIÓN CON football-data.org
 // ─────────────────────────────────────────────────────────────
 
@@ -1232,7 +1485,9 @@ function setup() {
     'Historico_Ranking':       ['participante_id','nombre','posicion','total',
                                 'pts_grupos','pts_elim','pts_spec','timestamp'],
     'Partido_Doble':           ['participante_id','partido_id','timestamp'],
-    'Goleadores':              ['jugador','equipo','goles','asistencias','partidos','timestamp']
+    'Goleadores':              ['jugador','equipo','goles','asistencias','partidos','timestamp'],
+    'Preguntas_Vivo':          ['id','partido_id','pregunta','opciones','puntos','respuesta_correcta','estado','creada'],
+    'Respuestas_Vivo':         ['pregunta_id','participante_id','respuesta','timestamp']
   };
 
   for (const [name, headers] of Object.entries(schemas)) {
@@ -1245,7 +1500,7 @@ function setup() {
         .setBackground('#1a1f35').setFontColor('#ffffff').setFontWeight('bold');
     }
   }
-  Logger.log('✅ Setup v2.1 completo! Hojas: ' + Object.keys(schemas).join(', '));
+  Logger.log('✅ Setup v2.2 completo! Hojas: ' + Object.keys(schemas).join(', '));
 }
 
 function setApiKey(key) {
