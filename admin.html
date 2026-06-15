@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin · Porra Mundial 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #07090f; --surface: #0f1320; --card: #141929;
+      --border: rgba(255,255,255,.07);
+      --gold: #f0b429; --gold2: #ffd76e;
+      --green: #22c55e; --blue: #3b82f6; --red: #ef4444;
+      --text: #f1f5f9; --muted: #64748b; --silver: #94a3b8;
+      --radius: 14px;
+    }
+    *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+    body {
+      font-family:"Outfit",sans-serif; background:var(--bg); color:var(--text);
+      min-height:100vh; padding:0 0 60px;
+    }
+    body::before {
+      content:""; position:fixed; inset:0;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events:none; z-index:0;
+    }
+
+    /* ——— Header ——— */
+    header {
+      position:sticky; top:0; z-index:100;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:0 24px; height:64px;
+      background:rgba(7,9,15,.9); backdrop-filter:blur(16px);
+      border-bottom:1px solid var(--border);
+    }
+    .logo { font-family:"Bebas Neue",cursive; font-size:1.4rem; letter-spacing:.08em; color:var(--gold); }
+    .logo span { color:var(--silver); font-size:1rem; margin-left:10px; }
+    .back-btn {
+      background:none; border:1px solid var(--border); border-radius:8px;
+      padding:6px 14px; color:var(--silver); font-family:inherit; font-size:.82rem;
+      cursor:pointer; text-decoration:none; transition:all .2s;
+    }
+    .back-btn:hover { border-color:var(--gold); color:var(--gold); }
+
+    /* ——— Layout ——— */
+    .page { position:relative; z-index:1; max-width:640px; margin:0 auto; padding:28px 20px; }
+
+    /* ——— Auth gate ——— */
+    #authGate {
+      background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+      padding:36px 28px; text-align:center; margin-top:60px;
+    }
+    .auth-title { font-family:"Bebas Neue",cursive; font-size:1.8rem; letter-spacing:.06em; margin-bottom:8px; }
+    .auth-sub   { font-size:.88rem; color:var(--muted); margin-bottom:24px; }
+    .auth-input {
+      width:100%; background:var(--surface); border:1.5px solid var(--border);
+      border-radius:10px; padding:12px 14px; color:var(--text); font-family:inherit;
+      font-size:1rem; outline:none; transition:border-color .2s; text-align:center;
+      letter-spacing:.2em;
+    }
+    .auth-input:focus { border-color:var(--gold); }
+    .auth-btn {
+      width:100%; margin-top:14px; background:var(--gold); border:none; border-radius:10px;
+      padding:13px; font-family:"Bebas Neue",cursive; font-size:1.1rem; letter-spacing:.06em;
+      color:#0a0c10; cursor:pointer; transition:opacity .2s;
+    }
+    .auth-btn:hover { opacity:.85; }
+    .auth-error { color:var(--red); font-size:.84rem; margin-top:10px; }
+
+    /* ——— Section titles ——— */
+    .section-title {
+      font-family:"Bebas Neue",cursive; font-size:1.35rem; letter-spacing:.06em;
+      color:var(--gold); margin-bottom:16px; display:flex; align-items:center; gap:10px;
+    }
+    .section-title small { font-family:"Outfit",sans-serif; font-size:.75rem; font-weight:500; color:var(--muted); letter-spacing:0; }
+
+    /* ——— Card ——— */
+    .card {
+      background:var(--card); border:1px solid var(--border);
+      border-radius:var(--radius); padding:22px 20px; margin-bottom:20px;
+    }
+
+    /* ——— Status badge ——— */
+    .status-active {
+      display:inline-flex; align-items:center; gap:6px;
+      background:rgba(240,180,41,.15); border:1px solid rgba(240,180,41,.3);
+      color:var(--gold); border-radius:20px; padding:4px 12px;
+      font-size:.72rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+    }
+    .status-active::before { content:''; width:7px; height:7px; border-radius:50%; background:var(--gold); animation:pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+    .status-none {
+      display:inline-flex; align-items:center; gap:6px;
+      background:var(--surface); border:1px solid var(--border);
+      color:var(--muted); border-radius:20px; padding:4px 12px;
+      font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em;
+    }
+
+    /* ——— Active question panel ——— */
+    .aq-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
+    .aq-text { font-size:1.05rem; font-weight:600; line-height:1.35; }
+    .aq-meta { font-size:.78rem; color:var(--muted); margin-bottom:18px; }
+    .aq-meta strong { color:var(--silver); }
+
+    /* ——— Tally bars ——— */
+    .tally-list { display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
+    .tally-item { display:flex; align-items:center; gap:10px; font-size:.88rem; }
+    .tally-label { width:100px; flex-shrink:0; font-weight:500; }
+    .tally-bar-wrap { flex:1; background:var(--surface); border-radius:20px; height:10px; overflow:hidden; }
+    .tally-bar { height:100%; background:var(--gold); border-radius:20px; transition:width .5s; }
+    .tally-count { width:28px; text-align:right; color:var(--muted); font-size:.8rem; }
+
+    /* ——— Names list ——— */
+    .names-wrap { margin-bottom:18px; }
+    .names-toggle { background:none; border:none; color:var(--muted); font-size:.8rem; cursor:pointer; padding:0; text-decoration:underline; }
+    .names-toggle:hover { color:var(--silver); }
+    .names-list { margin-top:10px; display:flex; flex-wrap:wrap; gap:6px; }
+    .name-chip {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:20px; padding:3px 10px; font-size:.78rem; color:var(--silver);
+    }
+
+    /* ——— Resolve buttons ——— */
+    .resolve-title { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:10px; }
+    .resolve-options { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+    .resolve-opt {
+      background:var(--surface); border:1.5px solid var(--border); border-radius:10px;
+      padding:9px 16px; font-family:inherit; font-size:.88rem; color:var(--text);
+      cursor:pointer; transition:all .18s;
+    }
+    .resolve-opt:hover  { border-color:var(--green); color:var(--green); }
+    .resolve-opt.picked { border-color:var(--green); background:rgba(34,197,94,.12); color:var(--green); font-weight:600; }
+    .resolve-btn {
+      width:100%; background:var(--green); border:none; border-radius:10px;
+      padding:12px; font-family:"Bebas Neue",cursive; font-size:1.05rem; letter-spacing:.06em;
+      color:#0a0c10; cursor:pointer; transition:opacity .2s;
+    }
+    .resolve-btn:disabled { opacity:.35; cursor:not-allowed; }
+    .resolve-btn:not(:disabled):hover { opacity:.85; }
+    .cancel-btn {
+      width:100%; margin-top:8px; background:none; border:1px solid rgba(239,68,68,.3);
+      border-radius:10px; padding:10px; font-family:inherit; font-size:.84rem;
+      color:var(--red); cursor:pointer; transition:all .2s;
+    }
+    .cancel-btn:hover { background:rgba(239,68,68,.08); border-color:var(--red); }
+
+    /* ——— Create form ——— */
+    .form-label {
+      display:block; font-size:.72rem; text-transform:uppercase; letter-spacing:.06em;
+      color:var(--muted); margin-bottom:6px;
+    }
+    .form-input, .form-select, .form-textarea {
+      width:100%; background:var(--surface); border:1.5px solid var(--border);
+      border-radius:10px; padding:11px 13px; color:var(--text); font-family:inherit;
+      font-size:.9rem; outline:none; transition:border-color .2s; margin-bottom:16px;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color:var(--gold); }
+    .form-select option { background:var(--card); }
+    .form-row { display:flex; gap:12px; }
+    .form-row .form-group { flex:1; }
+    .form-group { margin-bottom:0; }
+    .pts-hint { font-size:.75rem; color:var(--muted); margin-top:-12px; margin-bottom:16px; }
+    .opciones-hint { font-size:.75rem; color:var(--muted); margin-top:-12px; margin-bottom:16px; }
+    .preview-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; min-height:28px; }
+    .preview-chip {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:20px; padding:4px 12px; font-size:.8rem; color:var(--silver);
+    }
+    .create-btn {
+      width:100%; background:var(--gold); border:none; border-radius:10px;
+      padding:13px; font-family:"Bebas Neue",cursive; font-size:1.1rem; letter-spacing:.06em;
+      color:#0a0c10; cursor:pointer; transition:opacity .2s;
+    }
+    .create-btn:disabled { opacity:.35; cursor:not-allowed; }
+    .create-btn:not(:disabled):hover { opacity:.85; }
+
+    /* ——— Toast ——— */
+    #toast {
+      position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px);
+      background:var(--card); border:1px solid var(--border); border-radius:12px;
+      padding:12px 22px; font-size:.88rem; color:var(--text);
+      box-shadow:0 8px 32px rgba(0,0,0,.4); opacity:0; pointer-events:none;
+      transition:all .3s; z-index:999; white-space:nowrap;
+    }
+    #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    #toast.ok  { border-color:rgba(34,197,94,.4); color:var(--green); }
+    #toast.err { border-color:rgba(239,68,68,.4);  color:var(--red); }
+
+    /* ——— Refresh btn ——— */
+    .refresh-btn {
+      background:none; border:1px solid var(--border); border-radius:8px;
+      padding:5px 12px; color:var(--muted); font-family:inherit; font-size:.78rem;
+      cursor:pointer; transition:all .2s;
+    }
+    .refresh-btn:hover { border-color:var(--gold); color:var(--gold); }
+
+    .divider { border:none; border-top:1px solid var(--border); margin:24px 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Porra 2026 <span>· Admin</span></div>
+  <a href="index.html" class="back-btn">← Volver</a>
+</header>
+
+<!-- Auth gate -->
+<div class="page" id="authGate">
+  <div class="auth-title">🔐 Acceso Admin</div>
+  <div class="auth-sub">Introduce el PIN de administrador para continuar</div>
+  <input type="password" class="auth-input" id="adminPin" placeholder="· · · ·" maxlength="8"
+    onkeydown="if(event.key==='Enter')checkAdminPin()" />
+  <button class="auth-btn" onclick="checkAdminPin()">Entrar</button>
+  <div class="auth-error" id="authError"></div>
+</div>
+
+<!-- Main panel (hidden until auth) -->
+<div class="page" id="mainPanel" style="display:none">
+
+  <!-- ══ PREGUNTA ACTIVA ══ -->
+  <div class="section-title">
+    ⚡ Estado actual
+    <button class="refresh-btn" onclick="loadActiveQuestion()">↻ Actualizar</button>
+  </div>
+
+  <div class="card" id="activeCard">
+    <div style="color:var(--muted);font-size:.88rem">Cargando...</div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ══ CREAR PREGUNTA ══ -->
+  <div class="section-title" id="createSection">
+    ✏️ Nueva pregunta
+    <small>Solo cuando no hay ninguna activa</small>
+  </div>
+
+  <div class="card" id="createCard">
+
+    <label class="form-label">Partido en juego</label>
+    <select class="form-select" id="fPartidoId">
+      <option value="">Cargando partidos...</option>
+    </select>
+
+    <label class="form-label">Pregunta</label>
+    <input type="text" class="form-input" id="fPregunta"
+      placeholder="Ej: ¿Marcará España en la segunda parte?" maxlength="120"
+      oninput="updatePreview()" />
+
+    <label class="form-label">Opciones <span style="color:var(--muted)">(separadas por coma)</span></label>
+    <input type="text" class="form-input" id="fOpciones"
+      placeholder="Sí,No  ·  España,Marruecos,Ninguno  ·  1ª parte,2ª parte,Prórroga"
+      oninput="updatePreview()" />
+    <div class="opciones-hint">Mínimo 2 opciones. Se mostrarán como botones en el pop-up.</div>
+
+    <div id="opcionesPreview" class="preview-chips"></div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Puntos si acierta</label>
+        <input type="number" class="form-input" id="fPuntos" value="1" min="1" max="5" />
+      </div>
+    </div>
+    <div class="pts-hint">Normalmente +1. Puedes subir hasta +5 para preguntas más difíciles.</div>
+
+    <button class="create-btn" id="createBtn" onclick="createQuestion()">⚡ Lanzar pregunta</button>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxmreAnz7xl9COTf3a_g1rczwNHerPMmSGst1GLPCC5EVMCONEB6xlkdMsQ-ZejVA-VqA/exec";
+
+  // ─── Auth ───
+  const ADMIN_PIN = "2901admin";
+  var _authed = false;
+
+  function checkAdminPin() {
+    var pin = document.getElementById('adminPin').value.trim();
+    if (pin === ADMIN_PIN) {
+      _authed = true;
+      document.getElementById('authGate').style.display  = 'none';
+      document.getElementById('mainPanel').style.display = 'block';
+      init();
+    } else {
+      document.getElementById('authError').textContent = '❌ PIN incorrecto';
+      document.getElementById('adminPin').value = '';
+    }
+  }
+
+  // ─── API ───
+  async function api(params) {
+    const url = SCRIPT_URL + '?' + new URLSearchParams(params);
+    const res = await fetch(url);
+    return res.json();
+  }
+  async function post(body) {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+    });
+    return res.json();
+  }
+
+  // ─── Toast ───
+  function toast(msg, type) {
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'show ' + (type || '');
+    clearTimeout(el._t);
+    el._t = setTimeout(function() { el.className = ''; }, 3000);
+  }
+
+  // ─── Init ───
+  var _activeQuestion = null;
+
+  async function init() {
+    loadMatches();
+    loadActiveQuestion();
+    setInterval(loadActiveQuestion, 15000); // refresca respuestas cada 15s
+  }
+
+  // ─── Cargar partidos en juego para el select ───
+  async function loadMatches() {
+    try {
+      var data = await api({ action: 'getMatches' });
+      var matches = (data.matches || []).filter(function(m) {
+        return m.estado === 'IN_PLAY' || m.estado === 'PAUSED' || m.estado === 'HALFTIME';
+      });
+      var sel = document.getElementById('fPartidoId');
+      if (matches.length === 0) {
+        sel.innerHTML = '<option value="">No hay partidos en juego ahora mismo</option>';
+      } else {
+        sel.innerHTML = matches.map(function(m) {
+          return '<option value="' + m.id + '">' + m.equipo_local + ' vs ' + m.equipo_visitante + '</option>';
+        }).join('');
+      }
+    } catch(e) {
+      document.getElementById('fPartidoId').innerHTML = '<option value="">Error cargando partidos</option>';
+    }
+  }
+
+  // ─── Cargar pregunta activa ───
+  async function loadActiveQuestion() {
+    var card = document.getElementById('activeCard');
+    try {
+      var data = await api({ action: 'getActiveLiveQuestion', pid: '' });
+      _activeQuestion = data.question;
+
+      if (!data.question) {
+        card.innerHTML = '<div style="display:flex;align-items:center;gap:10px">'
+          + '<span class="status-none">Sin pregunta activa</span>'
+          + '<span style="font-size:.82rem;color:var(--muted)">Puedes crear una nueva abajo.</span></div>';
+        document.getElementById('createCard').style.opacity = '1';
+        document.getElementById('createBtn').disabled = false;
+        document.getElementById('createSection').style.opacity = '1';
+        return;
+      }
+
+      // Hay pregunta activa — bloquear crear nueva
+      document.getElementById('createCard').style.opacity = '.4';
+      document.getElementById('createBtn').disabled = true;
+      document.getElementById('createSection').style.opacity = '.5';
+
+      // Cargar respuestas
+      var ans = await api({ action: 'getLiveAnswers', qid: data.question.id });
+      var tally  = ans.tally  || {};
+      var answers = ans.answers || [];
+      var total  = ans.total  || 0;
+
+      var opciones = data.question.opciones || [];
+      var tallyHTML = opciones.map(function(op) {
+        var count = tally[op] || 0;
+        var pct   = total > 0 ? Math.round(count / total * 100) : 0;
+        return '<div class="tally-item">'
+          + '<div class="tally-label">' + op + '</div>'
+          + '<div class="tally-bar-wrap"><div class="tally-bar" style="width:' + pct + '%"></div></div>'
+          + '<div class="tally-count">' + count + '</div>'
+          + '</div>';
+      }).join('');
+
+      // Agrupar nombres por opción
+      var byOp = {};
+      opciones.forEach(function(op) { byOp[op] = []; });
+      answers.forEach(function(a) { if (byOp[a.respuesta]) byOp[a.respuesta].push(a.nombre); });
+      var namesHTML = opciones.map(function(op) {
+        var names = byOp[op] || [];
+        if (names.length === 0) return '';
+        return '<div style="margin-bottom:6px">'
+          + '<span style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">' + op + ':</span> '
+          + names.map(function(n) { return '<span class="name-chip">' + n + '</span>'; }).join(' ')
+          + '</div>';
+      }).join('');
+
+      // Resolve options
+      var resolveOpts = opciones.map(function(op) {
+        return '<button class="resolve-opt" onclick="pickResolve(this,\'' + op.replace(/'/g, "\\'") + '\')">' + op + '</button>';
+      }).join('');
+
+      card.innerHTML = ''
+        + '<div class="aq-header">'
+        +   '<span class="status-active">Pregunta activa</span>'
+        + '</div>'
+        + '<div class="aq-text">' + escHtml(data.question.pregunta) + '</div>'
+        + '<div class="aq-meta" style="margin-top:6px">'
+        +   '<strong>' + data.question.puntos + ' pt' + (data.question.puntos !== 1 ? 's' : '') + '</strong>'
+        +   ' · ' + total + ' respuesta' + (total !== 1 ? 's' : '')
+        + '</div>'
+
+        + '<div class="tally-list">' + tallyHTML + '</div>'
+
+        + (namesHTML ? '<div class="names-wrap">' + namesHTML + '</div>' : '')
+
+        + '<hr class="divider" style="margin:16px 0">'
+        + '<div class="resolve-title">Marcar respuesta correcta y repartir puntos</div>'
+        + '<div class="resolve-options" id="resolveOpts">' + resolveOpts + '</div>'
+        + '<button class="resolve-btn" id="resolveBtn" disabled onclick="resolveQuestion()">'
+        +   '✅ Confirmar y repartir puntos'
+        + '</button>'
+        + '<button class="cancel-btn" onclick="cancelQuestion()">✕ Cancelar pregunta sin resolver</button>';
+
+    } catch(e) {
+      card.innerHTML = '<div style="color:var(--red);font-size:.84rem">Error cargando estado.</div>';
+    }
+  }
+
+  var _resolveAnswer = null;
+  function pickResolve(el, value) {
+    _resolveAnswer = value;
+    document.querySelectorAll('.resolve-opt').forEach(function(b) { b.classList.remove('picked'); });
+    el.classList.add('picked');
+    document.getElementById('resolveBtn').disabled = false;
+  }
+
+  async function resolveQuestion() {
+    if (!_resolveAnswer || !_activeQuestion) return;
+    if (!confirm('¿Confirmas que "' + _resolveAnswer + '" es la respuesta correcta? Se repartirán los puntos ahora.')) return;
+    var btn = document.getElementById('resolveBtn');
+    btn.disabled = true;
+    btn.textContent = 'Repartiendo puntos...';
+    try {
+      var res = await post({ action: 'resolveLiveQuestion', qid: _activeQuestion.id, respuesta_correcta: _resolveAnswer });
+      if (res.error) { toast('❌ ' + res.error, 'err'); btn.disabled = false; return; }
+      toast('✅ ' + res.aciertos + ' acierto(s) · +' + res.puntos + ' pt(s) repartidos', 'ok');
+      _resolveAnswer = null;
+      setTimeout(loadActiveQuestion, 800);
+    } catch(e) {
+      toast('❌ Error de conexión', 'err');
+      btn.disabled = false;
+    }
+  }
+
+  async function cancelQuestion() {
+    if (!_activeQuestion) return;
+    if (!confirm('¿Cancelar la pregunta sin repartir puntos?')) return;
+    try {
+      var res = await post({ action: 'deleteLiveQuestion', qid: _activeQuestion.id });
+      if (res.error) { toast('❌ ' + res.error, 'err'); return; }
+      toast('Pregunta cancelada', '');
+      setTimeout(loadActiveQuestion, 600);
+    } catch(e) {
+      toast('❌ Error de conexión', 'err');
+    }
+  }
+
+  // ─── Preview opciones ───
+  function updatePreview() {
+    var raw = document.getElementById('fOpciones').value;
+    var chips = raw.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    document.getElementById('opcionesPreview').innerHTML = chips.map(function(c) {
+      return '<span class="preview-chip">' + escHtml(c) + '</span>';
+    }).join('');
+  }
+
+  // ─── Crear pregunta ───
+  async function createQuestion() {
+    var partidoId = document.getElementById('fPartidoId').value;
+    var pregunta  = document.getElementById('fPregunta').value.trim();
+    var opciones  = document.getElementById('fOpciones').value.trim();
+    var puntos    = parseInt(document.getElementById('fPuntos').value) || 1;
+
+    if (!partidoId) { toast('Selecciona un partido', 'err'); return; }
+    if (!pregunta)  { toast('Escribe la pregunta', 'err'); return; }
+    var ops = opciones.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    if (ops.length < 2) { toast('Mínimo 2 opciones', 'err'); return; }
+
+    var btn = document.getElementById('createBtn');
+    btn.disabled = true;
+    btn.textContent = 'Lanzando...';
+
+    try {
+      var res = await post({
+        action: 'createLiveQuestion',
+        partido_id: partidoId,
+        pregunta:   pregunta,
+        opciones:   ops.join(','),
+        puntos:     puntos
+      });
+      if (res.error) {
+        toast('❌ ' + res.error, 'err');
+        btn.disabled = false;
+        btn.textContent = '⚡ Lanzar pregunta';
+        return;
+      }
+      toast('✅ Pregunta lanzada. Ya aparece en el pop-up.', 'ok');
+      // Reset form
+      document.getElementById('fPregunta').value = '';
+      document.getElementById('fOpciones').value = '';
+      document.getElementById('fPuntos').value   = '1';
+      document.getElementById('opcionesPreview').innerHTML = '';
+      setTimeout(loadActiveQuestion, 600);
+    } catch(e) {
+      toast('❌ Error de conexión', 'err');
+      btn.disabled = false;
+      btn.textContent = '⚡ Lanzar pregunta';
+    }
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>
