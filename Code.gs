@@ -77,8 +77,9 @@ function doGet(e) {
       case 'getDailyComment':     return jsonResponse(getDailyComment());
       case 'getHistory':          return jsonResponse(getHistory(e.parameter.pid));
       case 'getProfile':          return jsonResponse(getProfile(e.parameter.pid));
-      case 'getAchievements':     return jsonResponse(getAchievements(e.parameter.pid));
-      case 'getJoker':            return jsonResponse(getJoker(e.parameter.pid));
+      case 'getAchievements':        return jsonResponse(getAchievements(e.parameter.pid));
+      case 'getRecentAchievements':  return jsonResponse(getRecentAchievements());
+      case 'getJoker':               return jsonResponse(getJoker(e.parameter.pid));
       case 'getTopScorers':         return jsonResponse(getTopScorers());
       case 'getActiveLiveQuestion': return jsonResponse(getActiveLiveQuestion(e.parameter.pid));
       case 'getLiveAnswers':        return jsonResponse(getLiveAnswers(e.parameter.qid));
@@ -934,6 +935,163 @@ function getAchievements(pid) {
   return {
     achievements: ALL_ACHIEVEMENTS.map(a => ({ ...a, locked: !earned.includes(a.id) }))
   };
+}
+
+// ─────────────────────────────────────────────────────────────
+//  LOGROS RECIENTES (para popup de novedades)
+// ─────────────────────────────────────────────────────────────
+
+function getRecentAchievements() {
+  const ALL_ACHIEVEMENTS = [
+    { id:'quinielas',     icon:'🎯', name:'El Quinielas',           desc:'Tu primer resultado exacto' },
+    { id:'nostradamus',   icon:'🔮', name:'Nostradamus con Balón',   desc:'5 exactos consecutivos' },
+    { id:'var',           icon:'💀', name:'Peor que el VAR',         desc:'3 partidos seguidos a 0 puntos' },
+    { id:'pulpo',         icon:'🐙', name:'Paul el Pulpo',           desc:'>75% acierto (mín. 10 partidos)' },
+    { id:'nba',           icon:'🏀', name:'¿Esto es la NBA?',        desc:'Exacto en un partido con 4+ goles' },
+    { id:'copypaste',     icon:'😴', name:'Copy-Paste FC',            desc:'Mismo marcador en 8+ partidos' },
+    { id:'hattrick',      icon:'🔥', name:'Hat-Trick de Sofá',       desc:'3 exactos en el mismo día' },
+    { id:'seleccionador', icon:'🤡', name:'Seleccionador Nacional',   desc:'5 partidos seguidos sin acertar el ganador' },
+  ];
+
+  const matchRows = getSheet('Partidos').getDataRange().getValues();
+  const predRows  = getSheet('Predicciones').getDataRange().getValues();
+  const partRows  = getSheet('Participantes').getDataRange().getValues();
+  const mHeaders  = matchRows[0];
+  const pHeaders  = predRows[0];
+
+  // Mapa de partidos terminados con su kickoff
+  const matches = {};
+  let latestKickoff = new Date(0);
+  for (let i = 1; i < matchRows.length; i++) {
+    const m = {};
+    mHeaders.forEach((h, j) => m[h] = matchRows[i][j]);
+    if (m.id && m.estado === 'FINISHED') {
+      matches[String(m.id)] = m;
+      const ko = new Date(m.kickoff);
+      if (ko > latestKickoff) latestKickoff = ko;
+    }
+  }
+
+  // Ventana de tiempo: últimas 48h desde el partido más reciente
+  const cutoff = new Date(latestKickoff.getTime() - 48 * 60 * 60 * 1000);
+
+  const results = [];
+
+  for (let pi = 1; pi < partRows.length; pi++) {
+    if (!partRows[pi][0]) continue;
+    const pid    = String(partRows[pi][0]);
+    const nombre = partRows[pi][1];
+
+    // Predicciones del jugador en partidos terminados
+    const userPreds = [];
+    for (let i = 1; i < predRows.length; i++) {
+      if (String(predRows[i][0]) !== pid) continue;
+      const p = {};
+      pHeaders.forEach((h, j) => p[h] = predRows[i][j]);
+      const match = matches[String(p.partido_id)];
+      if (!match || !match.kickoff) continue;
+      const glR = parseInt(match.goles_local), gvR = parseInt(match.goles_visitante);
+      const glP = parseInt(p.goles_local),     gvP = parseInt(p.goles_visitante);
+      if ([glR, gvR, glP, gvP].some(isNaN)) continue;
+      userPreds.push({
+        kickoff:    new Date(match.kickoff),
+        isExacto:   glP === glR && gvP === gvR,
+        isGanador:  winner(glP, gvP) === winner(glR, gvR),
+        totalGoals: glR + gvR,
+        predL: glP, predV: gvP
+      });
+    }
+    userPreds.sort((a, b) => a.kickoff - b.kickoff);
+
+    const total     = userPreds.length;
+    const exactos   = userPreds.filter(p => p.isExacto).length;
+    const ganadores = userPreds.filter(p => p.isGanador).length;
+
+    let exactStreak = 0, maxExactStreak = 0, exactStreakSince = null;
+    let missStreak  = 0, maxMissStreak  = 0, missStreakSince  = null;
+    let noWinStreak = 0, maxNoWinStreak = 0, noWinStreakSince = null;
+    const scoreCount = {};
+    let hasHighGoalExact = false, highGoalExactAt = null;
+    const exactsByDay = {};
+
+    for (const p of userPreds) {
+      if (p.isExacto) {
+        exactStreak++;
+        if (exactStreak > maxExactStreak) { maxExactStreak = exactStreak; exactStreakSince = p.kickoff; }
+      } else exactStreak = 0;
+
+      if (!p.isGanador) {
+        missStreak++;
+        if (missStreak > maxMissStreak) { maxMissStreak = missStreak; missStreakSince = p.kickoff; }
+        noWinStreak++;
+        if (noWinStreak > maxNoWinStreak) { maxNoWinStreak = noWinStreak; noWinStreakSince = p.kickoff; }
+      } else { missStreak = 0; noWinStreak = 0; }
+
+      const key = `${p.predL}-${p.predV}`;
+      scoreCount[key] = (scoreCount[key] || 0) + 1;
+
+      if (p.isExacto && p.totalGoals >= 4 && !hasHighGoalExact) {
+        hasHighGoalExact = true; highGoalExactAt = p.kickoff;
+      }
+      if (p.isExacto) {
+        const day = p.kickoff.toISOString().slice(0, 10);
+        exactsByDay[day] = (exactsByDay[day] || 0) + 1;
+      }
+    }
+
+    const maxSameScore    = Object.values(scoreCount).length ? Math.max(...Object.values(scoreCount)) : 0;
+    const maxExactsInDay  = Object.values(exactsByDay).length ? Math.max(...Object.values(exactsByDay)) : 0;
+    const hattrickDay     = Object.entries(exactsByDay).find(([,v]) => v >= 3);
+    const hattrickAt      = hattrickDay ? new Date(hattrickDay[0] + 'T23:59:59Z') : null;
+
+    // Buscar el kickoff aproximado del logro copypaste (cuando llegó a 8 del mismo marcador)
+    let copypasteAt = null;
+    if (maxSameScore >= 8) {
+      const dominantScore = Object.entries(scoreCount).find(([,v]) => v >= 8)?.[0];
+      if (dominantScore) {
+        let cnt = 0;
+        for (const p of userPreds) {
+          if (`${p.predL}-${p.predV}` === dominantScore) { cnt++; if (cnt === 8) { copypasteAt = p.kickoff; break; } }
+        }
+      }
+    }
+
+    // Primer exacto
+    const firstExactoAt = userPreds.find(p => p.isExacto)?.kickoff || null;
+
+    // Logros ganados con su timestamp aproximado
+    const earned = [
+      { id:'quinielas',     ok: exactos >= 1,                                      at: firstExactoAt },
+      { id:'nostradamus',   ok: maxExactStreak >= 5,                               at: exactStreakSince },
+      { id:'var',           ok: maxMissStreak >= 3,                                at: missStreakSince },
+      { id:'pulpo',         ok: total >= 10 && ganadores / total >= 0.75,          at: userPreds[userPreds.length - 1]?.kickoff || null },
+      { id:'nba',           ok: hasHighGoalExact,                                  at: highGoalExactAt },
+      { id:'copypaste',     ok: maxSameScore >= 8,                                 at: copypasteAt },
+      { id:'hattrick',      ok: maxExactsInDay >= 3,                               at: hattrickAt },
+      { id:'seleccionador', ok: maxNoWinStreak >= 5,                               at: noWinStreakSince },
+    ];
+
+    for (const e of earned) {
+      if (!e.ok || !e.at) continue;
+      if (e.at < cutoff) continue; // solo recientes
+      const def = ALL_ACHIEVEMENTS.find(a => a.id === e.id);
+      if (!def) continue;
+      results.push({
+        pid,
+        nombre,
+        achievement_id:   def.id,
+        achievement_icon: def.icon,
+        achievement_name: def.name,
+        achievement_desc: def.desc,
+        earned_at:        e.at.toISOString()
+      });
+    }
+  }
+
+  // Ordenar por más reciente primero
+  results.sort((a, b) => new Date(b.earned_at) - new Date(a.earned_at));
+
+  return { achievements: results, cutoff: cutoff.toISOString() };
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -855,6 +855,54 @@
         .nav-links a { padding: 10px 14px !important; font-size: .9rem !important; width: 100%; border-radius: 8px; }
         #mobileUserRow { display: flex !important; }
       }
+
+      /* ——— Popup logros recientes ——— */
+      .achiev-overlay {
+        position: fixed; inset: 0;
+        background: rgba(7,9,15,.88); backdrop-filter: blur(10px);
+        z-index: 400; display: flex; align-items: center; justify-content: center; padding: 20px;
+      }
+      .achiev-overlay.hidden { display: none; }
+      .achiev-modal {
+        background: var(--card); border: 1px solid rgba(240,180,41,.35);
+        border-radius: 20px; padding: 28px 24px 26px; width: 100%; max-width: 440px;
+        max-height: 85vh; display: flex; flex-direction: column;
+        box-shadow: 0 0 50px rgba(240,180,41,.13);
+        animation: lq-in .28s ease;
+      }
+      .achiev-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 4px; }
+      .achiev-title { font-family: "Bebas Neue", cursive; font-size: 1.6rem; letter-spacing: .05em; color: var(--gold); line-height: 1; }
+      .achiev-close { background: none; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; margin-top: -2px; }
+      .achiev-close:hover { color: var(--text); }
+      .achiev-subtitle { font-size: .78rem; color: var(--muted); margin-bottom: 20px; }
+      .achiev-list { overflow-y: auto; display: flex; flex-direction: column; gap: 12px; flex: 1; padding-right: 2px; }
+      .achiev-card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+        transition: border-color .2s;
+      }
+      .achiev-card:hover { border-color: rgba(240,180,41,.35); }
+      .achiev-card-top { display: flex; gap: 14px; align-items: flex-start; }
+      .achiev-icon { font-size: 2rem; line-height: 1; flex-shrink: 0; margin-top: 2px; }
+      .achiev-info { flex: 1; min-width: 0; }
+      .achiev-player { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--gold); margin-bottom: 2px; }
+      .achiev-name { font-family: "Bebas Neue", cursive; font-size: 1.15rem; letter-spacing: .04em; color: var(--text); line-height: 1.1; }
+      .achiev-desc { font-size: .78rem; color: var(--muted); margin-top: 3px; }
+      .achiev-time { font-size: .7rem; color: var(--muted); margin-top: 4px; opacity: .7; }
+      .achiev-card-footer { display: flex; justify-content: flex-end; }
+      .achiev-perfil-btn {
+        font-size: .72rem; font-weight: 600; color: var(--gold);
+        background: rgba(240,180,41,.1); border: 1px solid rgba(240,180,41,.25);
+        border-radius: 8px; padding: 5px 11px; cursor: pointer; transition: all .18s; text-decoration: none; display: inline-block;
+      }
+      .achiev-perfil-btn:hover { background: rgba(240,180,41,.2); }
+      .achiev-footer { margin-top: 18px; }
+      .achiev-btn-ok {
+        width: 100%; background: var(--gold); border: none; border-radius: 12px;
+        padding: 13px; font-family: "Bebas Neue", cursive; font-size: 1.1rem;
+        letter-spacing: .06em; color: #0a0c10; cursor: pointer; transition: opacity .2s;
+      }
+      .achiev-btn-ok:hover { opacity: .85; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   </head>
@@ -1020,6 +1068,21 @@
     </div>
 
     <!-- ——— Live question popup ——— -->
+    <!-- ——— Popup logros recientes ——— -->
+    <div class="achiev-overlay hidden" id="achievOverlay">
+      <div class="achiev-modal">
+        <div class="achiev-header">
+          <div class="achiev-title">🏅 Nuevos logros</div>
+          <button class="achiev-close" onclick="closeAchievements()">✕</button>
+        </div>
+        <div class="achiev-subtitle">Conseguidos en las últimas 48 horas</div>
+        <div class="achiev-list" id="achievList"></div>
+        <div class="achiev-footer">
+          <button class="achiev-btn-ok" onclick="closeAchievements()">¡Entendido!</button>
+        </div>
+      </div>
+    </div>
+
     <div class="lq-overlay hidden" id="lqOverlay">
       <div class="lq-modal">
         <div class="lq-badge">⚡ Pregunta en vivo</div>
@@ -1646,7 +1709,68 @@
       }
 
       refresh();
+
+      // ——— Popup logros recientes ———
+      async function checkRecentAchievements() {
+        try {
+          var res = await api({ action: 'getRecentAchievements' });
+          if (!res.achievements || res.achievements.length === 0) return;
+
+          // Construir clave única para este conjunto de logros
+          var seenKey = 'porra2026_seen_achievements';
+          var seenRaw = localStorage.getItem(seenKey);
+          var seen = seenRaw ? JSON.parse(seenRaw) : [];
+
+          // Filtrar solo los no vistos
+          var newOnes = res.achievements.filter(function(a) {
+            return !seen.includes(a.pid + '_' + a.achievement_id);
+          });
+          if (newOnes.length === 0) return;
+
+          // Renderizar tarjetas
+          var list = document.getElementById('achievList');
+          list.innerHTML = newOnes.map(function(a) {
+            var timeAgo = relativeTime(a.earned_at);
+            return '<div class="achiev-card">'
+              + '<div class="achiev-card-top">'
+              + '<div class="achiev-icon">' + a.achievement_icon + '</div>'
+              + '<div class="achiev-info">'
+              + '<div class="achiev-player">' + escHtml(a.nombre) + '</div>'
+              + '<div class="achiev-name">' + escHtml(a.achievement_name) + '</div>'
+              + '<div class="achiev-desc">' + escHtml(a.achievement_desc) + '</div>'
+              + '<div class="achiev-time">' + timeAgo + '</div>'
+              + '</div>'
+              + '</div>'
+              + '<div class="achiev-card-footer">'
+              + '<a class="achiev-perfil-btn" href="perfil.html?pid=' + encodeURIComponent(a.pid) + '">Ver perfil de ' + escHtml(a.nombre) + ' →</a>'
+              + '</div>'
+              + '</div>';
+          }).join('');
+
+          document.getElementById('achievOverlay').classList.remove('hidden');
+          // Guardar como vistos
+          newOnes.forEach(function(a) { seen.push(a.pid + '_' + a.achievement_id); });
+          localStorage.setItem(seenKey, JSON.stringify(seen));
+        } catch(e) { console.warn('Achievements popup error:', e); }
+      }
+
+      function relativeTime(isoStr) {
+        var diff = Date.now() - new Date(isoStr).getTime();
+        var mins  = Math.floor(diff / 60000);
+        var hours = Math.floor(mins / 60);
+        var days  = Math.floor(hours / 24);
+        if (days >= 1)  return 'hace ' + days + ' día' + (days > 1 ? 's' : '');
+        if (hours >= 1) return 'hace ' + hours + ' hora' + (hours > 1 ? 's' : '');
+        if (mins >= 1)  return 'hace ' + mins + ' min';
+        return 'ahora mismo';
+      }
+
+      function closeAchievements() {
+        document.getElementById('achievOverlay').classList.add('hidden');
+      }
+
       checkLiveQuestion(); // lanza el popup si hay pregunta activa
+      checkRecentAchievements(); // popup logros nuevos
       setInterval(refresh, 60_000); // cada 60 segundos
 
       // ─── Menú hamburguesa ───
