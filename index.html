@@ -614,6 +614,9 @@
     
       /* ——— La Crónica del Día ——— */
       .cronica-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+      @media (max-width: 640px) {
+        .cronica-grid { grid-template-columns: 1fr; }
+      }
       .cronica-card {
         background: var(--card); border: 1px solid var(--border);
         border-radius: var(--radius); padding: 20px 22px;
