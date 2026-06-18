@@ -613,7 +613,7 @@
       }
     
       /* ——— La Crónica del Día ——— */
-      .cronica-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .cronica-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
       .cronica-card {
         background: var(--card); border: 1px solid var(--border);
         border-radius: var(--radius); padding: 20px 22px;
@@ -636,6 +636,46 @@
       .cronica-nombre { font-weight: 700; font-size: 1rem; margin-bottom: 4px; }
       .cronica-pts { font-size: .8rem; color: var(--muted); margin-bottom: 10px; }
       .cronica-texto { font-size: .88rem; color: var(--silver); line-height: 1.55; }
+
+      .cronica-card.cagada-card {
+        border-color: rgba(139,92,246,.25);
+        background: linear-gradient(135deg, rgba(139,92,246,.06) 0%, var(--card) 100%);
+      }
+      .cagada-card .cronica-tag { background: rgba(139,92,246,.15); color: #a78bfa; }
+      .cagada-marcador { font-size: .82rem; color: var(--muted); margin-bottom: 10px; font-family: monospace; letter-spacing: .03em; }
+      .cagada-marcador strong { color: var(--text); }
+      /* ——— Duelos diarios ——— */
+      .duelos-hoy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; margin-bottom: 18px; }
+      .duelo-card {
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 14px 16px;
+        display: flex; align-items: center; gap: 12px;
+      }
+      .duelo-card.win  { border-color: rgba(34,197,94,.3);  background: linear-gradient(135deg, rgba(34,197,94,.05) 0%, var(--card) 100%); }
+      .duelo-card.loss { border-color: rgba(239,68,68,.25); background: linear-gradient(135deg, rgba(239,68,68,.04) 0%, var(--card) 100%); }
+      .duelo-card.draw { border-color: rgba(240,180,41,.25); background: linear-gradient(135deg, rgba(240,180,41,.04) 0%, var(--card) 100%); }
+      .duelo-vs { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
+      .duelo-nombre { font-weight: 600; font-size: .9rem; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .duelo-pts { font-size: 1.15rem; font-weight: 700; min-width: 28px; text-align: center; }
+      .duelo-sep { color: var(--muted); font-size: .75rem; font-weight: 700; padding: 0 2px; }
+      .duelo-badge {
+        font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+        padding: 3px 8px; border-radius: 4px; white-space: nowrap;
+      }
+      .duelo-badge.W  { background: rgba(34,197,94,.15);  color: var(--green); }
+      .duelo-badge.L  { background: rgba(239,68,68,.12);  color: var(--red); }
+      .duelo-badge.D  { background: rgba(240,180,41,.12); color: var(--gold); }
+      .duelo-badge.pendiente { background: rgba(100,116,139,.15); color: var(--muted); }
+      .duelos-tabla { width: 100%; border-collapse: collapse; font-size: .88rem; }
+      .duelos-tabla th { color: var(--muted); font-weight: 600; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: center; }
+      .duelos-tabla th:first-child { text-align: left; }
+      .duelos-tabla td { padding: 9px 10px; border-bottom: 1px solid rgba(255,255,255,.03); text-align: center; }
+      .duelos-tabla td:first-child { text-align: left; font-weight: 600; }
+      .duelos-tabla tr:last-child td { border-bottom: none; }
+      .duelos-tabla .dt-yo { background: rgba(240,180,41,.04); }
+      .duelos-tabla .dt-pts { color: var(--gold); font-weight: 700; }
+      .duelos-toggle { cursor: pointer; font-size: .8rem; color: var(--muted); margin-top: 10px; display: inline-block; }
+      .duelos-toggle:hover { color: var(--text); }
 
       /* ——— Ranking evolution chart ——— */
       .chart-toggle-row {
@@ -1009,6 +1049,26 @@
         <div class="skeleton skeleton-row"></div>
       </div>
 
+    </div>
+
+    <!-- DUELOS DIARIOS -->
+    <div class="section" id="duelosSection" style="display:none">
+      <div class="section-header">
+        <div class="section-title">🥊 Duelo del Día</div>
+        <div class="section-meta" id="duelosMeta">—</div>
+      </div>
+      <!-- Tarjetas duelos de hoy -->
+      <div class="duelos-hoy-grid" id="duelosHoyGrid"></div>
+      <!-- Tabla clasificación general (colapsable) -->
+      <span class="duelos-toggle" id="duelosToggle" onclick="toggleDuelosTabla()">▼ Ver tabla general de duelos</span>
+      <div id="duelosTablaWrap" style="display:none; margin-top:12px;">
+        <div class="table-wrap">
+          <table class="duelos-tabla">
+            <thead><tr><th>Jugador</th><th>V</th><th>E</th><th>D</th><th>Pts</th></tr></thead>
+            <tbody id="duelosTablaBody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- GRÁFICO EVOLUCIÓN (colapsable) -->
@@ -1417,7 +1477,7 @@
       // ——— La Crónica del Día ———
       async function loadDailyComment() {
         try {
-          const { lider, colista } = await api({ action: 'getDailyComment' });
+          const { lider, colista, cagada } = await api({ action: 'getDailyComment' });
           if (!lider && !colista) return;
           let html = '';
           if (lider) html += `<div class="cronica-card lider-card">
@@ -1431,6 +1491,12 @@
             <div class="cronica-nombre">${colista.nombre}</div>
             <div class="cronica-pts">${colista.total} puntos · #${colista.pos}</div>
             <div class="cronica-texto">${escHtml(colista.comment)}</div>
+          </div>`;
+          if (cagada) html += `<div class="cronica-card cagada-card">
+            <div class="cronica-tag">💩 Cagada del Día</div>
+            <div class="cronica-nombre">${escHtml(cagada.nombre)}</div>
+            <div class="cagada-marcador">${escHtml(cagada.local)} vs ${escHtml(cagada.visitante)} · Pick: <strong>${cagada.predL}–${cagada.predV}</strong> · Real: <strong>${cagada.realL}–${cagada.realV}</strong></div>
+            <div class="cronica-texto">${escHtml(cagada.comment)}</div>
           </div>`;
           document.getElementById('cronicaGrid').innerHTML = html;
           document.getElementById('cronicaSection').style.display = 'block';
@@ -1587,6 +1653,72 @@
         res.innerHTML = html; res.style.display = 'block';
       }
 
+      // ——— Duelos diarios ———
+      async function loadDuelos() {
+        try {
+          const { ranking, hoy } = await api({ action: 'getDuelos' });
+          if (!ranking || !ranking.length) return;
+
+          const raw = localStorage.getItem('porra2026_user');
+          const myPid = raw ? (JSON.parse(raw).id || '') : '';
+
+          // Tarjetas del día
+          let hoyHtml = '';
+          if (hoy && hoy.length) {
+            hoy.forEach(d => {
+              const esA = d.pidA === myPid;
+              const esB = d.pidB === myPid;
+              let cardClass = '';
+              if (d.resuelto && (esA || esB)) {
+                const miRes = esA ? d.resA : d.resB;
+                cardClass = miRes === 'W' ? 'win' : miRes === 'L' ? 'loss' : 'draw';
+              }
+              const badgeA = d.resuelto
+                ? `<span class="duelo-badge ${d.resA}">${d.resA==='W'?'Victoria':d.resA==='L'?'Derrota':'Empate'}</span>`
+                : `<span class="duelo-badge pendiente">En juego</span>`;
+              hoyHtml += `<div class="duelo-card ${cardClass}">
+                <div class="duelo-vs">
+                  <span class="duelo-nombre">${escHtml(d.nomA)}</span>
+                  <span class="duelo-pts">${d.pts_a_display !== undefined ? d.pts_a_display : (d.resuelto ? d.ptsA : '—')}</span>
+                  <span class="duelo-sep">vs</span>
+                  <span class="duelo-pts">${d.resuelto ? d.ptsB : '—'}</span>
+                  <span class="duelo-nombre" style="text-align:right">${escHtml(d.nomB)}</span>
+                </div>
+                ${badgeA}
+              </div>`;
+            });
+            document.getElementById('duelosHoyGrid').innerHTML = hoyHtml;
+            const fecha = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+            document.getElementById('duelosMeta').textContent = fecha;
+          } else {
+            document.getElementById('duelosHoyGrid').innerHTML = '<div style="color:var(--muted);font-size:.88rem;padding:8px 0">No hay duelos programados hoy</div>';
+          }
+
+          // Tabla general
+          const myRow = ranking.find(r => r.pid === myPid);
+          document.getElementById('duelosTablaBody').innerHTML = ranking.map((r, i) => {
+            const isMe = r.pid === myPid;
+            return `<tr class="${isMe ? 'dt-yo' : ''}">
+              <td>${i + 1}. ${escHtml(r.nombre)}${isMe ? ' <span style="color:var(--gold);font-size:.72rem">tú</span>' : ''}</td>
+              <td style="color:var(--green)">${r.W}</td>
+              <td style="color:var(--gold)">${r.D}</td>
+              <td style="color:var(--red)">${r.L}</td>
+              <td class="dt-pts">${r.pts}</td>
+            </tr>`;
+          }).join('');
+
+          document.getElementById('duelosSection').style.display = 'block';
+        } catch(e) { console.warn('Duelos error:', e); }
+      }
+
+      function toggleDuelosTabla() {
+        const wrap   = document.getElementById('duelosTablaWrap');
+        const toggle = document.getElementById('duelosToggle');
+        const open   = wrap.style.display === 'none';
+        wrap.style.display   = open ? 'block' : 'none';
+        toggle.textContent   = open ? '▲ Ocultar tabla general' : '▼ Ver tabla general de duelos';
+      }
+
       // ——— Auto-refresh ———
       async function refresh() {
         await Promise.all([loadStats(), loadRanking(), loadMatches()]);
@@ -1594,6 +1726,7 @@
           _firstLoad = false;
           loadDailyComment();
           loadHistory();
+          loadDuelos();
         }
       }
 

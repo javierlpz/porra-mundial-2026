@@ -230,6 +230,29 @@
         .nav-links a { padding: 10px 14px !important; font-size: .9rem !important; width: 100%; border-radius: 8px; }
         #mobileUserRow { display: flex !important; }
       }
+
+      /* ——— Duelos perfil ——— */
+      .duelos-resumen { display: flex; gap: 10px; margin-bottom: 16px; }
+      .duelo-res-card {
+        flex: 1; background: var(--surface); border: 1px solid var(--border);
+        border-radius: 10px; padding: 12px; text-align: center;
+      }
+      .duelo-res-val { font-family: "Bebas Neue", cursive; font-size: 1.8rem; letter-spacing: .04em; }
+      .duelo-res-lbl { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+      .duelo-res-card.W .duelo-res-val { color: var(--green); }
+      .duelo-res-card.D .duelo-res-val { color: var(--gold); }
+      .duelo-res-card.L .duelo-res-val { color: var(--red); }
+      .duelos-hist-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+      .duelos-hist-table th { color: var(--muted); font-weight: 600; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+      .duelos-hist-table th:last-child { text-align: center; }
+      .duelos-hist-table td { padding: 9px 10px; border-bottom: 1px solid rgba(255,255,255,.03); }
+      .duelos-hist-table td:last-child { text-align: center; }
+      .duelos-hist-table tr:last-child td { border-bottom: none; }
+      .dh-badge { font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 4px; }
+      .dh-badge.W  { background: rgba(34,197,94,.15);  color: var(--green); }
+      .dh-badge.L  { background: rgba(239,68,68,.12);  color: var(--red); }
+      .dh-badge.D  { background: rgba(240,180,41,.12); color: var(--gold); }
+      .dh-badge.pendiente { background: rgba(100,116,139,.15); color: var(--muted); }
   </style>
 </head>
 <body>
@@ -323,6 +346,22 @@
         </div>
       </div>
 
+      <!-- Duelos -->
+      <div class="section" id="duelosPerfilSection" style="display:none">
+        <div class="section-title">🥊 Duelos</div>
+        <div class="duelos-resumen">
+          <div class="duelo-res-card W"><div class="duelo-res-val" id="dpW">0</div><div class="duelo-res-lbl">Victorias</div></div>
+          <div class="duelo-res-card D"><div class="duelo-res-val" id="dpD">0</div><div class="duelo-res-lbl">Empates</div></div>
+          <div class="duelo-res-card L"><div class="duelo-res-val" id="dpL">0</div><div class="duelo-res-lbl">Derrotas</div></div>
+        </div>
+        <div class="table-wrap">
+          <table class="duelos-hist-table">
+            <thead><tr><th>Fecha</th><th>Rival</th><th>Pts</th><th>Resultado</th></tr></thead>
+            <tbody id="duelosHistBody"></tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -351,14 +390,16 @@
     async function loadAll() {
       if (!pid) { show('error'); return; }
       try {
-        const [pr, ar, hr] = await Promise.all([
+        const [pr, ar, hr, dr] = await Promise.all([
           api({ action:'getProfile',      pid }),
           api({ action:'getAchievements', pid }),
-          api({ action:'getHistory',      pid })
+          api({ action:'getHistory',      pid }),
+          api({ action:'getDuelosJugador', pid })
         ]);
         renderProfile(pr);
         renderAchievements(ar.achievements || []);
         renderChart(hr.history || []);
+        renderDuelos(dr);
         show('profile');
       } catch(e) {
         console.warn(e);
@@ -528,6 +569,34 @@
           }
         }
       });
+    }
+
+    function renderDuelos(dr) {
+      if (!dr || dr.error) return;
+      const { historial = [], W = 0, D = 0, L = 0 } = dr;
+      if (!historial.length && W === 0 && D === 0 && L === 0) return;
+
+      document.getElementById('dpW').textContent = W;
+      document.getElementById('dpD').textContent = D;
+      document.getElementById('dpL').textContent = L;
+
+      const tbody = document.getElementById('duelosHistBody');
+      if (!historial.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">Aún no hay duelos disputados</td></tr>';
+      } else {
+        const labelRes = { W: 'Victoria', L: 'Derrota', D: 'Empate', pendiente: 'En juego' };
+        tbody.innerHTML = historial.map(d => {
+          const res = d.resuelto ? d.resultado : 'pendiente';
+          const ptsStr = d.resuelto ? `${d.misPts} – ${d.susPts}` : '—';
+          return `<tr>
+            <td style="color:var(--muted);font-size:.82rem">${d.fecha}</td>
+            <td style="font-weight:600">${escHtml(d.rival)}</td>
+            <td style="color:var(--muted)">${ptsStr}</td>
+            <td><span class="dh-badge ${res}">${labelRes[res] || res}</span></td>
+          </tr>`;
+        }).join('');
+      }
+      document.getElementById('duelosPerfilSection').style.display = 'block';
     }
 
     loadAll();

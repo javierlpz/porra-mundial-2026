@@ -83,6 +83,8 @@ function doGet(e) {
       case 'getTopScorers':         return jsonResponse(getTopScorers());
       case 'getActiveLiveQuestion': return jsonResponse(getActiveLiveQuestion(e.parameter.pid));
       case 'getLiveAnswers':        return jsonResponse(getLiveAnswers(e.parameter.qid));
+      case 'getDuelos':             return jsonResponse(getDuelos());
+      case 'getDuelosJugador':      return jsonResponse(getDuelosJugador(e.parameter.pid));
       default: return jsonResponse({ error: 'Acción desconocida: ' + action });
     }
   } catch (err) {
@@ -630,9 +632,84 @@ function getDailyComment() {
 
   const seed = lider.total + colista.total + new Date().getDate() + new Date().getMonth();
 
+  // ── La Cagada del Día ──
+  // Busca el pick más alejado del resultado real entre todos los partidos de hoy (FINISHED)
+  let cagada = null;
+  try {
+    const today     = new Date().toISOString().slice(0, 10);
+    const mSheet    = getSheet('Partidos');
+    const mRows     = mSheet.getDataRange().getValues();
+    const mH        = mRows[0];
+    const predSheet = getSheet('Predicciones');
+    const predRows  = predSheet.getDataRange().getValues();
+    const predH     = predRows[0];
+    const partSheet = getSheet('Participantes');
+    const partRows  = partSheet.getDataRange().getValues();
+
+    // Mapa nombre por id
+    const nombreById = {};
+    for (let i = 1; i < partRows.length; i++) {
+      if (partRows[i][0]) nombreById[String(partRows[i][0])] = String(partRows[i][1]);
+    }
+
+    // Partidos de hoy finalizados
+    const todayMatches = {};
+    for (let i = 1; i < mRows.length; i++) {
+      if (!mRows[i][0]) continue;
+      const m = {};
+      mH.forEach((h, j) => m[h] = mRows[i][j]);
+      if (m.estado !== 'FINISHED') continue;
+      if (!m.kickoff || String(m.kickoff).slice(0, 10) !== today) continue;
+      todayMatches[String(m.id)] = m;
+    }
+
+    let maxError = -1;
+    for (let i = 1; i < predRows.length; i++) {
+      if (!predRows[i][0]) continue;
+      const mid = String(predRows[i][predH.indexOf('partido_id')]);
+      const match = todayMatches[mid];
+      if (!match) continue;
+      const predL = Number(predRows[i][predH.indexOf('goles_local')]);
+      const predV = Number(predRows[i][predH.indexOf('goles_visitante')]);
+      const realL = Number(match.goles_local);
+      const realV = Number(match.goles_visitante);
+      if (isNaN(predL) || isNaN(predV) || isNaN(realL) || isNaN(realV)) continue;
+      const error = Math.abs(predL - realL) + Math.abs(predV - realV);
+      if (error > maxError) {
+        maxError = error;
+        const pid = String(predRows[i][predH.indexOf('participante_id')]);
+        cagada = {
+          nombre:    nombreById[pid] || 'Alguien',
+          predL, predV, realL, realV,
+          local:     match.equipo_local,
+          visitante: match.equipo_visitante,
+          error
+        };
+      }
+    }
+
+    // Solo mostrar si el error es relevante (al menos 3 goles de diferencia total)
+    if (cagada && cagada.error < 3) cagada = null;
+
+    if (cagada) {
+      const cagadaLines = [
+        `${cagada.nombre} apostó ${cagada.predL}-${cagada.predV} en el ${cagada.local} vs ${cagada.visitante}. El resultado fue ${cagada.realL}-${cagada.realV}. Hay que tener valor. 💩`,
+        `Alguien tenía mucha fe en el ${cagada.local}. Ese alguien era ${cagada.nombre}. Predijo ${cagada.predL}-${cagada.predV}. El universo respondió ${cagada.realL}-${cagada.realV}. 🌍`,
+        `${cagada.nombre} veía el partido diferente al resto del mundo. Muy diferente. ${cagada.predL}-${cagada.predV} vs ${cagada.realL}-${cagada.realV}. 🔭`,
+        `La pick del día la firma ${cagada.nombre}: ${cagada.predL}-${cagada.predV} cuando el resultado fue ${cagada.realL}-${cagada.realV}. Ni los comentaristas de TVE la vieron tan mal. 📺`,
+        `${cagada.nombre} apostó ${cagada.predL}-${cagada.predV}. El partido acabó ${cagada.realL}-${cagada.realV}. Con ${cagada.error} goles de diferencia, esto ya no es mala suerte. Es un don. 🎁`,
+        `Archivo histórico de picks imposibles: ${cagada.nombre}, ${cagada.local} vs ${cagada.visitante}, pronóstico ${cagada.predL}-${cagada.predV}, realidad ${cagada.realL}-${cagada.realV}. Para la posteridad. 🗃️`,
+      ];
+      cagada.comment = cagadaLines[(seed + 7) % cagadaLines.length];
+    }
+  } catch(e) {
+    cagada = null;
+  }
+
   return {
     lider:   { nombre: lider.nombre,   total: lider.total,   pos: lider.pos,   comment: liderLines[seed % liderLines.length] },
     colista: { nombre: colista.nombre, total: colista.total, pos: colista.pos, comment: colistaLines[(seed + 4) % colistaLines.length] },
+    cagada,
     date: new Date().toISOString().slice(0, 10),
     totalPlayers: ranking.length
   };
@@ -1733,7 +1810,8 @@ function setup() {
     'Partido_Doble':           ['participante_id','partido_id','timestamp'],
     'Goleadores':              ['jugador','equipo','goles','asistencias','partidos','timestamp'],
     'Preguntas_Vivo':          ['id','partido_id','pregunta','opciones','puntos','respuesta_correcta','estado','creada','cierra_en'],
-    'Respuestas_Vivo':         ['pregunta_id','participante_id','respuesta','timestamp']
+    'Respuestas_Vivo':         ['pregunta_id','participante_id','respuesta','timestamp'],
+    'Duelos':                  ['fecha','pid_a','nombre_a','pid_b','nombre_b','pts_a','pts_b','resultado_a','resultado_b','resuelto']
   };
 
   for (const [name, headers] of Object.entries(schemas)) {
@@ -1746,7 +1824,7 @@ function setup() {
         .setBackground('#1a1f35').setFontColor('#ffffff').setFontWeight('bold');
     }
   }
-  Logger.log('✅ Setup v2.2 completo! Hojas: ' + Object.keys(schemas).join(', '));
+  Logger.log('✅ Setup v2.3 completo! Hojas: ' + Object.keys(schemas).join(', '));
 }
 
 function setApiKey(key) {
@@ -1757,7 +1835,259 @@ function setApiKey(key) {
 function setupTriggers() {
   ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('syncResults').timeBased().everyMinutes(5).create();
-  Logger.log('✅ Trigger: syncResults() cada 5 minutos.');
+  ScriptApp.newTrigger('generateDailyDuels').timeBased()
+    .atHour(0).nearMinute(5).everyDays(1).create();
+  Logger.log('✅ Triggers: syncResults() cada 5 min, generateDailyDuels() a medianoche.');
+}
+
+// ─────────────────────────────────────────────────────────────
+//  DUELOS DIARIOS
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Genera los emparejamientos del día si hay partidos programados.
+ * Se llama automáticamente a medianoche via trigger.
+ * Si ya existen duelos para hoy, no hace nada.
+ */
+function generateDailyDuels() {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (Madrid ≈ UTC+2, close enough)
+
+  // Comprobar si hay partidos hoy
+  const mSheet  = getSheet('Partidos');
+  const mRows   = mSheet.getDataRange().getValues();
+  const mH      = mRows[0];
+  let hasMatchesToday = false;
+  for (let i = 1; i < mRows.length; i++) {
+    if (!mRows[i][0]) continue;
+    const kickoff = String(mRows[i][mH.indexOf('kickoff')]);
+    if (kickoff && kickoff.slice(0, 10) === today) { hasMatchesToday = true; break; }
+  }
+  if (!hasMatchesToday) {
+    Logger.log('generateDailyDuels: no hay partidos hoy (' + today + '), sin duelos.');
+    return;
+  }
+
+  const dSheet = getOrCreateSheet('Duelos',
+    ['fecha','pid_a','nombre_a','pid_b','nombre_b','pts_a','pts_b','resultado_a','resultado_b','resuelto']);
+  const dRows  = dSheet.getDataRange().getValues();
+
+  // Comprobar que no existen ya duelos para hoy
+  for (let i = 1; i < dRows.length; i++) {
+    if (String(dRows[i][0]).slice(0, 10) === today) {
+      Logger.log('generateDailyDuels: ya hay duelos para hoy.');
+      return;
+    }
+  }
+
+  // Obtener lista de participantes activos
+  const pSheet = getSheet('Participantes');
+  const pRows  = pSheet.getDataRange().getValues();
+  const pH     = pRows[0];
+  const players = [];
+  for (let i = 1; i < pRows.length; i++) {
+    if (!pRows[i][0]) continue;
+    if (String(pRows[i][pH.indexOf('activo')]) === 'false') continue;
+    players.push({ id: String(pRows[i][0]), nombre: String(pRows[i][1]) });
+  }
+
+  // Barajar con Fisher-Yates
+  for (let i = players.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [players[i], players[j]] = [players[j], players[i]];
+  }
+
+  // Si número impar, el último se empareja con el primero (bye circular)
+  if (players.length % 2 !== 0) players.push(players[0]);
+
+  const ts = new Date().toISOString();
+  for (let i = 0; i < players.length; i += 2) {
+    const a = players[i];
+    const b = players[i + 1];
+    dSheet.appendRow([today, a.id, a.nombre, b.id, b.nombre, 0, 0, 'pendiente', 'pendiente', false]);
+  }
+  Logger.log('generateDailyDuels: ' + (players.length / 2) + ' duelos generados para ' + today);
+}
+
+/**
+ * Resuelve los duelos del día calculando puntos obtenidos por cada jugador.
+ * Se puede llamar manualmente o añadir a syncResults.
+ * Solo resuelve duelos donde resuelto === false y la fecha es <= hoy.
+ */
+function resolveDailyDuels() {
+  const dSheet = getOrCreateSheet('Duelos',
+    ['fecha','pid_a','nombre_a','pid_b','nombre_b','pts_a','pts_b','resultado_a','resultado_b','resuelto']);
+  const dRows  = dSheet.getDataRange().getValues();
+  const dH     = dRows[0];
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Obtener puntos por día para cada participante desde Predicciones + Partidos
+  // Calculamos puntos de partidos FINISHED del día para cada jugador
+  const mSheet = getSheet('Partidos');
+  const mRows  = mSheet.getDataRange().getValues();
+  const mH     = mRows[0];
+
+  const predSheet = getSheet('Predicciones');
+  const predRows  = predSheet.getDataRange().getValues();
+  const predH     = predRows[0];
+
+  // Construir mapa partido_id → partido (solo FINISHED)
+  const matchMap = {};
+  for (let i = 1; i < mRows.length; i++) {
+    if (!mRows[i][0]) continue;
+    const m = {};
+    mH.forEach((h, j) => m[h] = mRows[i][j]);
+    if (m.estado !== 'FINISHED') continue;
+    matchMap[String(m.id)] = m;
+  }
+
+  // Función: puntos de un pick
+  function calcPickPts(pred, match) {
+    const gl = Number(pred.goles_local);
+    const gv = Number(pred.goles_visitante);
+    const rl = Number(match.goles_local);
+    const rv = Number(match.goles_visitante);
+    const fase = match.fase || 'GROUP_STAGE';
+    const isElim = !fase.includes('GROUP');
+    if (isNaN(gl) || isNaN(gv) || isNaN(rl) || isNaN(rv)) return 0;
+    if (gl === rl && gv === rv) return isElim ? 7 : 4;
+    if (winner(gl, gv) === winner(rl, rv)) return isElim ? 4 : 2;
+    return 0;
+  }
+
+  // Construir mapa pid → { fecha → pts }
+  const ptsByPidByDate = {};
+  for (let i = 1; i < predRows.length; i++) {
+    if (!predRows[i][0]) continue;
+    const pred = {};
+    predH.forEach((h, j) => pred[h] = predRows[i][j]);
+    const mid = String(pred.partido_id);
+    const match = matchMap[mid];
+    if (!match) continue;
+    const fecha = String(match.kickoff).slice(0, 10);
+    const pts   = calcPickPts(pred, match);
+    const pid   = String(pred.participante_id);
+    if (!ptsByPidByDate[pid]) ptsByPidByDate[pid] = {};
+    ptsByPidByDate[pid][fecha] = (ptsByPidByDate[pid][fecha] || 0) + pts;
+  }
+
+  // Resolver duelos pendientes
+  let resolved = 0;
+  for (let i = 1; i < dRows.length; i++) {
+    if (!dRows[i][0]) continue;
+    if (String(dRows[i][dH.indexOf('resuelto')]) === 'true') continue;
+    const fecha = String(dRows[i][0]).slice(0, 10);
+    if (fecha > today) continue; // futuro, no tocar
+
+    const pidA  = String(dRows[i][dH.indexOf('pid_a')]);
+    const pidB  = String(dRows[i][dH.indexOf('pid_b')]);
+    const ptsA  = (ptsByPidByDate[pidA] && ptsByPidByDate[pidA][fecha]) || 0;
+    const ptsB  = (ptsByPidByDate[pidB] && ptsByPidByDate[pidB][fecha]) || 0;
+
+    let resA, resB;
+    if (ptsA > ptsB)      { resA = 'W'; resB = 'L'; }
+    else if (ptsB > ptsA) { resA = 'L'; resB = 'W'; }
+    else                  { resA = 'D'; resB = 'D'; }
+
+    const row = i + 1;
+    dSheet.getRange(row, dH.indexOf('pts_a') + 1).setValue(ptsA);
+    dSheet.getRange(row, dH.indexOf('pts_b') + 1).setValue(ptsB);
+    dSheet.getRange(row, dH.indexOf('resultado_a') + 1).setValue(resA);
+    dSheet.getRange(row, dH.indexOf('resultado_b') + 1).setValue(resB);
+    dSheet.getRange(row, dH.indexOf('resuelto') + 1).setValue(true);
+    resolved++;
+  }
+  Logger.log('resolveDailyDuels: ' + resolved + ' duelos resueltos.');
+}
+
+/**
+ * Devuelve la tabla de duelos global: victorias/empates/derrotas por jugador,
+ * más el duelo de hoy (pendiente o resuelto).
+ */
+function getDuelos() {
+  const dSheet = getOrCreateSheet('Duelos',
+    ['fecha','pid_a','nombre_a','pid_b','nombre_b','pts_a','pts_b','resultado_a','resultado_b','resuelto']);
+  const dRows  = dSheet.getDataRange().getValues();
+  const dH     = dRows[0];
+  const today  = new Date().toISOString().slice(0, 10);
+
+  const tabla  = {}; // pid → { nombre, W, D, L }
+  const hoy    = []; // duelos de hoy
+
+  for (let i = 1; i < dRows.length; i++) {
+    if (!dRows[i][0]) continue;
+    const fecha    = String(dRows[i][0]).slice(0, 10);
+    const pidA     = String(dRows[i][dH.indexOf('pid_a')]);
+    const nomA     = String(dRows[i][dH.indexOf('nombre_a')]);
+    const pidB     = String(dRows[i][dH.indexOf('pid_b')]);
+    const nomB     = String(dRows[i][dH.indexOf('nombre_b')]);
+    const ptsA     = Number(dRows[i][dH.indexOf('pts_a')]) || 0;
+    const ptsB     = Number(dRows[i][dH.indexOf('pts_b')]) || 0;
+    const resA     = String(dRows[i][dH.indexOf('resultado_a')]);
+    const resB     = String(dRows[i][dH.indexOf('resultado_b')]);
+    const resuelto = String(dRows[i][dH.indexOf('resuelto')]) === 'true';
+
+    if (!tabla[pidA]) tabla[pidA] = { nombre: nomA, W: 0, D: 0, L: 0 };
+    if (!tabla[pidB]) tabla[pidB] = { nombre: nomB, W: 0, D: 0, L: 0 };
+
+    if (resuelto) {
+      if (resA === 'W') tabla[pidA].W++; else if (resA === 'D') tabla[pidA].D++; else tabla[pidA].L++;
+      if (resB === 'W') tabla[pidB].W++; else if (resB === 'D') tabla[pidB].D++; else tabla[pidB].L++;
+    }
+
+    if (fecha === today) {
+      hoy.push({ pidA, nomA, pidB, nomB, ptsA, ptsB, resA, resB, resuelto });
+    }
+  }
+
+  // Convertir tabla a array ordenado por victorias desc
+  const ranking = Object.entries(tabla).map(([pid, d]) => ({
+    pid, nombre: d.nombre, W: d.W, D: d.D, L: d.L,
+    pts: d.W * 3 + d.D   // puntos estilo liga (W=3, D=1, L=0)
+  }));
+  ranking.sort((a, b) => b.pts - a.pts || b.W - a.W);
+
+  return { ranking, hoy, updated: new Date().toISOString() };
+}
+
+/**
+ * Devuelve el historial de duelos de un jugador concreto.
+ */
+function getDuelosJugador(pid) {
+  if (!pid) return { error: 'pid requerido' };
+  const dSheet = getOrCreateSheet('Duelos',
+    ['fecha','pid_a','nombre_a','pid_b','nombre_b','pts_a','pts_b','resultado_a','resultado_b','resuelto']);
+  const dRows  = dSheet.getDataRange().getValues();
+  const dH     = dRows[0];
+
+  const historial = [];
+  let W = 0, D = 0, L = 0;
+
+  for (let i = 1; i < dRows.length; i++) {
+    if (!dRows[i][0]) continue;
+    const pidA = String(dRows[i][dH.indexOf('pid_a')]);
+    const pidB = String(dRows[i][dH.indexOf('pid_b')]);
+    if (pidA !== String(pid) && pidB !== String(pid)) continue;
+
+    const esA      = pidA === String(pid);
+    const fecha    = String(dRows[i][0]).slice(0, 10);
+    const rival    = esA ? String(dRows[i][dH.indexOf('nombre_b')]) : String(dRows[i][dH.indexOf('nombre_a')]);
+    const misPts   = esA ? Number(dRows[i][dH.indexOf('pts_a')]) : Number(dRows[i][dH.indexOf('pts_b')]);
+    const susPts   = esA ? Number(dRows[i][dH.indexOf('pts_b')]) : Number(dRows[i][dH.indexOf('pts_a')]);
+    const resuelto = String(dRows[i][dH.indexOf('resuelto')]) === 'true';
+    const resultado = esA
+      ? String(dRows[i][dH.indexOf('resultado_a')])
+      : String(dRows[i][dH.indexOf('resultado_b')]);
+
+    if (resuelto) {
+      if (resultado === 'W') W++; else if (resultado === 'D') D++; else L++;
+    }
+
+    historial.push({ fecha, rival, misPts, susPts, resultado, resuelto });
+  }
+
+  historial.sort((a, b) => b.fecha.localeCompare(a.fecha));
+  return { historial, W, D, L };
 }
 
 function testApiConnection() {
