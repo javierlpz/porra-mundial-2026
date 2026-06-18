@@ -50,6 +50,11 @@ function winner(g1, g2) {
   return 'D';
 }
 
+// Devuelve la fecha actual en Madrid como "YYYY-MM-DD"
+function todayMadrid() {
+  return Utilities.formatDate(new Date(), 'Europe/Madrid', 'yyyy-MM-dd');
+}
+
 function jsonResponse(data) {
   return ContentService
     .createTextOutput(JSON.stringify(data))
@@ -632,84 +637,9 @@ function getDailyComment() {
 
   const seed = lider.total + colista.total + new Date().getDate() + new Date().getMonth();
 
-  // ── La Cagada del Día ──
-  // Busca el pick más alejado del resultado real entre todos los partidos de hoy (FINISHED)
-  let cagada = null;
-  try {
-    const today     = new Date().toISOString().slice(0, 10);
-    const mSheet    = getSheet('Partidos');
-    const mRows     = mSheet.getDataRange().getValues();
-    const mH        = mRows[0];
-    const predSheet = getSheet('Predicciones');
-    const predRows  = predSheet.getDataRange().getValues();
-    const predH     = predRows[0];
-    const partSheet = getSheet('Participantes');
-    const partRows  = partSheet.getDataRange().getValues();
-
-    // Mapa nombre por id
-    const nombreById = {};
-    for (let i = 1; i < partRows.length; i++) {
-      if (partRows[i][0]) nombreById[String(partRows[i][0])] = String(partRows[i][1]);
-    }
-
-    // Partidos de hoy finalizados
-    const todayMatches = {};
-    for (let i = 1; i < mRows.length; i++) {
-      if (!mRows[i][0]) continue;
-      const m = {};
-      mH.forEach((h, j) => m[h] = mRows[i][j]);
-      if (m.estado !== 'FINISHED') continue;
-      if (!m.kickoff || String(m.kickoff).slice(0, 10) !== today) continue;
-      todayMatches[String(m.id)] = m;
-    }
-
-    let maxError = -1;
-    for (let i = 1; i < predRows.length; i++) {
-      if (!predRows[i][0]) continue;
-      const mid = String(predRows[i][predH.indexOf('partido_id')]);
-      const match = todayMatches[mid];
-      if (!match) continue;
-      const predL = Number(predRows[i][predH.indexOf('goles_local')]);
-      const predV = Number(predRows[i][predH.indexOf('goles_visitante')]);
-      const realL = Number(match.goles_local);
-      const realV = Number(match.goles_visitante);
-      if (isNaN(predL) || isNaN(predV) || isNaN(realL) || isNaN(realV)) continue;
-      const error = Math.abs(predL - realL) + Math.abs(predV - realV);
-      if (error > maxError) {
-        maxError = error;
-        const pid = String(predRows[i][predH.indexOf('participante_id')]);
-        cagada = {
-          nombre:    nombreById[pid] || 'Alguien',
-          predL, predV, realL, realV,
-          local:     match.equipo_local,
-          visitante: match.equipo_visitante,
-          error
-        };
-      }
-    }
-
-    // Solo mostrar si el error es relevante (al menos 3 goles de diferencia total)
-    if (cagada && cagada.error < 3) cagada = null;
-
-    if (cagada) {
-      const cagadaLines = [
-        `${cagada.nombre} apostó ${cagada.predL}-${cagada.predV} en el ${cagada.local} vs ${cagada.visitante}. El resultado fue ${cagada.realL}-${cagada.realV}. Hay que tener valor. 💩`,
-        `Alguien tenía mucha fe en el ${cagada.local}. Ese alguien era ${cagada.nombre}. Predijo ${cagada.predL}-${cagada.predV}. El universo respondió ${cagada.realL}-${cagada.realV}. 🌍`,
-        `${cagada.nombre} veía el partido diferente al resto del mundo. Muy diferente. ${cagada.predL}-${cagada.predV} vs ${cagada.realL}-${cagada.realV}. 🔭`,
-        `La pick del día la firma ${cagada.nombre}: ${cagada.predL}-${cagada.predV} cuando el resultado fue ${cagada.realL}-${cagada.realV}. Ni los comentaristas de TVE la vieron tan mal. 📺`,
-        `${cagada.nombre} apostó ${cagada.predL}-${cagada.predV}. El partido acabó ${cagada.realL}-${cagada.realV}. Con ${cagada.error} goles de diferencia, esto ya no es mala suerte. Es un don. 🎁`,
-        `Archivo histórico de picks imposibles: ${cagada.nombre}, ${cagada.local} vs ${cagada.visitante}, pronóstico ${cagada.predL}-${cagada.predV}, realidad ${cagada.realL}-${cagada.realV}. Para la posteridad. 🗃️`,
-      ];
-      cagada.comment = cagadaLines[(seed + 7) % cagadaLines.length];
-    }
-  } catch(e) {
-    cagada = null;
-  }
-
   return {
     lider:   { nombre: lider.nombre,   total: lider.total,   pos: lider.pos,   comment: liderLines[seed % liderLines.length] },
     colista: { nombre: colista.nombre, total: colista.total, pos: colista.pos, comment: colistaLines[(seed + 4) % colistaLines.length] },
-    cagada,
     date: new Date().toISOString().slice(0, 10),
     totalPlayers: ranking.length
   };
@@ -1739,6 +1669,7 @@ function syncResults() {
     updatePartidos(matches);
     syncScorers();
     calculateAllPoints();
+    resolveDailyDuels();
     Logger.log(`✅ Sync OK — ${matches.length} partidos — ${new Date().toLocaleString('es-ES')}`);
   } catch (err) {
     Logger.log('❌ Sync error: ' + err.message);
@@ -1850,7 +1781,7 @@ function setupTriggers() {
  * Si ya existen duelos para hoy, no hace nada.
  */
 function generateDailyDuels() {
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (Madrid ≈ UTC+2, close enough)
+  const today = todayMadrid(); // YYYY-MM-DD hora Madrid
 
   // Comprobar si hay partidos hoy
   const mSheet  = getSheet('Partidos');
@@ -1873,7 +1804,9 @@ function generateDailyDuels() {
 
   // Comprobar que no existen ya duelos para hoy
   for (let i = 1; i < dRows.length; i++) {
-    if (String(dRows[i][0]).slice(0, 10) === today) {
+    const rawF = dRows[i][0];
+    const f = rawF instanceof Date ? Utilities.formatDate(rawF, 'Europe/Madrid', 'yyyy-MM-dd') : String(rawF).slice(0, 10);
+    if (f === today) {
       Logger.log('generateDailyDuels: ya hay duelos para hoy.');
       return;
     }
@@ -1919,7 +1852,7 @@ function resolveDailyDuels() {
   const dRows  = dSheet.getDataRange().getValues();
   const dH     = dRows[0];
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayMadrid();
 
   // Obtener puntos por día para cada participante desde Predicciones + Partidos
   // Calculamos puntos de partidos FINISHED del día para cada jugador
@@ -1976,7 +1909,8 @@ function resolveDailyDuels() {
   for (let i = 1; i < dRows.length; i++) {
     if (!dRows[i][0]) continue;
     if (String(dRows[i][dH.indexOf('resuelto')]) === 'true') continue;
-    const fecha = String(dRows[i][0]).slice(0, 10);
+    const rawF = dRows[i][0];
+    const fecha = rawF instanceof Date ? Utilities.formatDate(rawF, 'Europe/Madrid', 'yyyy-MM-dd') : String(rawF).slice(0, 10);
     if (fecha > today) continue; // futuro, no tocar
 
     const pidA  = String(dRows[i][dH.indexOf('pid_a')]);
@@ -2009,14 +1943,17 @@ function getDuelos() {
     ['fecha','pid_a','nombre_a','pid_b','nombre_b','pts_a','pts_b','resultado_a','resultado_b','resuelto']);
   const dRows  = dSheet.getDataRange().getValues();
   const dH     = dRows[0];
-  const today  = new Date().toISOString().slice(0, 10);
+  const today  = todayMadrid();
 
   const tabla  = {}; // pid → { nombre, W, D, L }
   const hoy    = []; // duelos de hoy
 
   for (let i = 1; i < dRows.length; i++) {
     if (!dRows[i][0]) continue;
-    const fecha    = String(dRows[i][0]).slice(0, 10);
+    const rawFecha = dRows[i][0];
+    const fecha = rawFecha instanceof Date
+      ? Utilities.formatDate(rawFecha, 'Europe/Madrid', 'yyyy-MM-dd')
+      : String(rawFecha).slice(0, 10);
     const pidA     = String(dRows[i][dH.indexOf('pid_a')]);
     const nomA     = String(dRows[i][dH.indexOf('nombre_a')]);
     const pidB     = String(dRows[i][dH.indexOf('pid_b')]);
@@ -2070,7 +2007,8 @@ function getDuelosJugador(pid) {
     if (pidA !== String(pid) && pidB !== String(pid)) continue;
 
     const esA      = pidA === String(pid);
-    const fecha    = String(dRows[i][0]).slice(0, 10);
+    const rawF2    = dRows[i][0];
+    const fecha    = rawF2 instanceof Date ? Utilities.formatDate(rawF2, 'Europe/Madrid', 'yyyy-MM-dd') : String(rawF2).slice(0, 10);
     const rival    = esA ? String(dRows[i][dH.indexOf('nombre_b')]) : String(dRows[i][dH.indexOf('nombre_a')]);
     const misPts   = esA ? Number(dRows[i][dH.indexOf('pts_a')]) : Number(dRows[i][dH.indexOf('pts_b')]);
     const susPts   = esA ? Number(dRows[i][dH.indexOf('pts_b')]) : Number(dRows[i][dH.indexOf('pts_a')]);
