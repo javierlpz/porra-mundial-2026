@@ -607,23 +607,24 @@ function getDailyComment() {
   const colista = ranking[ranking.length - 1];
 
   const liderLines = [
-    `${lider.nombre} lleva ${lider.total} puntos y ya le ha pedido a su madre que le borde el número 1 en la camiseta. 👑`,
-    `Con ${lider.total} puntos, ${lider.nombre} predice mejor que el hombre del tiempo. Y el hombre del tiempo cobra. 🔮`,
-    `${lider.nombre} está tan arriba que necesita oxígeno. ${lider.total} puntos. Denunciadle por trampa. 📈`,
-    `${lider.nombre} con ${lider.total} puntos. O tiene un informador en el vestuario o es el reencarnado de Nostradamus. ⚽`,
-    `A estas alturas, ${lider.nombre} ya solo falla cuando quiere. ${lider.total} puntos. El resto aprendices. 🏆`,
-    `${lider.nombre} con ${lider.total} puntos: el ser humano más seguro de sí mismo de esta porra. Y con razón. 😎`,
-    `Según nuestros datos, ${lider.nombre} ni siquiera ve los partidos. Los adivina de antemano. ${lider.total} puntos. 🧿`,
+    `${lider.nombre} con ${lider.total} puntos. Ya ha reservado mesa para la cena del campeón. En el Bernabéu. Sin invitaros. 🍽️`,
+    `${lider.total} puntos para ${lider.nombre}. Su madre lo tiene enmarcado en el salón. Al lado del diploma de la ESO. 🖼️`,
+    `${lider.nombre} lleva ${lider.total} puntos y ya habla de sí mismo en tercera persona. "El líder no falla." 👑`,
+    `Con ${lider.total} puntos, ${lider.nombre} ha empezado a cobrar por sus picks en el grupo de WhatsApp. Nadie ha pagado todavía. 💬`,
+    `${lider.nombre}: ${lider.total} puntos. Dice que es suerte. Miente. Lo dice con una sonrisa enorme. 😁`,
+    `${lider.total} puntos. ${lider.nombre} ya ensaya el discurso de agradecimiento para la cena. Tiene PowerPoint. 📊`,
+    `${lider.nombre} con ${lider.total} puntos. Le han propuesto ser comentarista de la Sexta y está considerándolo. 📺`,
   ];
 
   const colistaLines = [
-    `${colista.nombre} lleva ${colista.total} puntos. Un mono eligiendo al azar habría acertado más. Con los ojos cerrados. 🐒`,
-    `Con ${colista.total} puntos, ${colista.nombre} no solo va último: está redefiniendo el concepto de "ir último". 📉`,
-    `${colista.nombre}: ${colista.total} puntos. Le han preguntado si quiere ser seleccionador y ha dicho que sí. 🤡`,
-    `${colista.nombre} acumula ${colista.total} puntos. Hay fósiles del jurásico con mejor tasa de acierto. 💀`,
-    `Los ${colista.total} puntos de ${colista.nombre} son un logro. Nadie pensaba que se podía equivocar tanto. Récord. 😬`,
-    `${colista.nombre}: ${colista.total} pts. Predijo tan mal que la API de football-data le envió una carta de condolencias. 🎲`,
-    `${colista.nombre} lleva ${colista.total} puntos. Hasta el VAR habría acertado más, y eso ya es mucho decir. 📺`,
+    `${colista.nombre}: ${colista.total} puntos. Sus picks son tan malos que se usan de control negativo en los estudios. 🧪`,
+    `Con ${colista.total} puntos, ${colista.nombre} ha conseguido lo imposible: que hasta él mismo dude de sí mismo. 📉`,
+    `${colista.nombre} lleva ${colista.total} puntos. Su estrategia de predicción fue validada por un astrólogo de Instagram. ☆`,
+    `${colista.total} puntos. ${colista.nombre} no va último por mala suerte. Va último por méritos propios. Sostenidos. 💀`,
+    `${colista.nombre} con ${colista.total} puntos. Si apostara dinero real, ya habría financiado las vacaciones del bookmaker. 💸`,
+    `A estas alturas, ${colista.nombre} no predice resultados. Selecciona catástrofes. ${colista.total} puntos. 🤡`,
+    `${colista.nombre}: ${colista.total} pts. El grupo de WhatsApp le ha silenciado. Por su propio bien. 📵`,
+    `${colista.total} puntos. ${colista.nombre} vio todos los partidos, analizó las estadísticas y acertó menos que tirando una moneda. 🎲`,
   ];
 
   const seed = lider.total + colista.total + new Date().getDate() + new Date().getMonth();
