@@ -1713,10 +1713,17 @@
           const me = JSON.parse(raw);
           if (!me.id) { document.getElementById('duelosSection').style.display = 'none'; return; }
 
-          const { activos, historial, ptsRetos } = await api({ action: 'getRetos', pid: me.id });
+          // Cargar mis retos (para historial y popup) + todos los activos del grupo
+          const [misRetos, globales] = await Promise.all([
+            api({ action: 'getRetos', pid: me.id }),
+            api({ action: 'getRetosGlobales' })
+          ]);
+
+          const { activos: misActivos, historial } = misRetos;
+          const todosActivos = globales.activos || [];
 
           // Mostrar botón retar solo si no tengo reto activo
-          const tengoActivo = activos && activos.some(r =>
+          const tengoActivo = misActivos && misActivos.some(r =>
             r.retadorId === me.id || r.retadoId === me.id
           );
           document.getElementById('btnRetar').style.display = tengoActivo ? 'none' : 'inline-block';
@@ -1724,21 +1731,23 @@
           const grid = document.getElementById('duelosHoyGrid');
           let html = '';
 
-          // Retos activos primero
-          if (activos && activos.length) {
-            activos.forEach(r => {
-              const soyRetador = r.retadorId === me.id;
-              const esParaMi   = r.retadoId  === me.id && r.estado === 'pendiente';
-              let cardClass = 'pendiente-card';
-              let badgeLabel = r.estado === 'pendiente' ? 'Pendiente' : 'Aceptado';
-              let badgeClass = r.estado === 'pendiente' ? 'pendiente' : 'aceptado';
+          // Separar: los míos primero, luego el resto del grupo
+          const misIds   = new Set((misActivos || []).map(r => r.id));
+          const misFila  = todosActivos.filter(r => misIds.has(r.id));
+          const otrosFila = todosActivos.filter(r => !misIds.has(r.id));
+
+          // Mis retos activos (con acciones si soy el retado)
+          if (misActivos && misActivos.length) {
+            misActivos.forEach(r => {
+              const esParaMi = r.retadoId === me.id && r.estado === 'pendiente';
+              const badgeLabel = r.estado === 'pendiente' ? 'Pendiente' : 'Aceptado';
+              const badgeClass = r.estado === 'pendiente' ? 'pendiente' : 'aceptado';
               let accionesHtml = '';
 
               if (esParaMi) {
                 _retoPendienteId = r.id;
-                // Mostrar popup
                 document.getElementById('retoPopupBody').innerHTML =
-                  `<strong>${escHtml(r.retadorNombre)}</strong> te reta en el partido <strong>${escHtml(r.partido)}</strong>.<br>¿Lo aceptas?`;
+                  `<strong>${escHtml(r.retadorNombre)}</strong> te reta en <strong>${escHtml(r.partido)}</strong>.<br>¿Lo aceptas?`;
                 document.getElementById('retoPopup').style.display = 'block';
                 accionesHtml = `<div class="duelo-acciones">
                   <button class="btn-rechazar" onclick="responderRetoPopup('rechazar')">Rechazar</button>
@@ -1746,12 +1755,12 @@
                 </div>`;
               }
 
-              html += `<div class="duelo-card ${cardClass}">
+              html += `<div class="duelo-card pendiente-card">
                 <div style="flex:1;min-width:0">
                   <div class="duelo-vs">
-                    <span class="duelo-nombre">${escHtml(r.retadorNombre)}</span>
+                    <span class="duelo-nombre" style="color:var(--gold)">${escHtml(r.retadorNombre)}</span>
                     <span class="duelo-sep">vs</span>
-                    <span class="duelo-nombre">${escHtml(r.retadoNombre)}</span>
+                    <span class="duelo-nombre" style="color:var(--gold)">${escHtml(r.retadoNombre)}</span>
                     <span class="duelo-badge ${badgeClass}">${badgeLabel}</span>
                   </div>
                   <div class="duelo-partido">⚽ ${escHtml(r.partido)}</div>
@@ -1761,10 +1770,30 @@
             });
           }
 
-          // Historial reciente (últimos 5)
+          // Retos del resto del grupo (sin acciones)
+          if (otrosFila.length) {
+            if (html) html += `<div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;padding:6px 2px 2px">Otros duelos del grupo</div>`;
+            otrosFila.forEach(r => {
+              const badgeLabel = r.estado === 'pendiente' ? 'Pendiente' : 'Aceptado';
+              const badgeClass = r.estado === 'pendiente' ? 'pendiente' : 'aceptado';
+              html += `<div class="duelo-card" style="opacity:.75">
+                <div style="flex:1;min-width:0">
+                  <div class="duelo-vs">
+                    <span class="duelo-nombre">${escHtml(r.retadorNombre)}</span>
+                    <span class="duelo-sep">vs</span>
+                    <span class="duelo-nombre">${escHtml(r.retadoNombre)}</span>
+                    <span class="duelo-badge ${badgeClass}">${badgeLabel}</span>
+                  </div>
+                  <div class="duelo-partido">⚽ ${escHtml(r.partido)}</div>
+                </div>
+              </div>`;
+            });
+          }
+
+          // Historial reciente (últimos 5 propios)
           if (historial && historial.length) {
-            const recientes = historial.slice(0, 5);
-            recientes.forEach(r => {
+            if (html) html += `<div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;padding:10px 2px 2px">Últimos resultados</div>`;
+            historial.slice(0, 5).forEach(r => {
               const res = r.miResultado || r.estado;
               const badgeMap = { ganado: 'ganado', perdido: 'perdido', empate: 'empate', rechazado: 'caducado', caducado: 'caducado' };
               const labelMap = { ganado: '🏆 Victoria +1', perdido: '💀 Derrota -1', empate: '🤝 Empate', rechazado: 'Rechazado', caducado: 'Caducado' };
@@ -1783,7 +1812,7 @@
             });
           }
 
-          if (!html) html = '<div class="reto-empty">No tienes retos activos. ¡Reta a alguien! ⚔️</div>';
+          if (!html) html = '<div class="reto-empty">No hay duelos activos. ¡Sé el primero en retar! ⚔️</div>';
           grid.innerHTML = html;
 
         } catch(e) { console.warn('Retos error:', e); }
