@@ -90,6 +90,7 @@ function doGet(e) {
       case 'getLiveAnswers':        return jsonResponse(getLiveAnswers(e.parameter.qid));
       case 'getDuelos':             return jsonResponse(getDuelos());
       case 'getDuelosJugador':      return jsonResponse(getDuelosJugador(e.parameter.pid));
+      case 'getRetos':              return jsonResponse(getRetos(e.parameter.pid));
       default: return jsonResponse({ error: 'Acción desconocida: ' + action });
     }
   } catch (err) {
@@ -111,6 +112,8 @@ function doPost(e) {
       case 'createLiveQuestion':return jsonResponse(createLiveQuestion(data));
       case 'resolveLiveQuestion':return jsonResponse(resolveLiveQuestion(data));
       case 'deleteLiveQuestion':return jsonResponse(deleteLiveQuestion(data));
+      case 'crearReto':         return jsonResponse(crearReto(data));
+      case 'responderReto':     return jsonResponse(responderReto(data));
       default: return jsonResponse({ error: 'Acción desconocida: ' + data.action });
     }
   } catch (err) {
@@ -1466,6 +1469,27 @@ function calculatePoints(pid) {
     // Si las hojas no existen aún, ignorar
   }
 
+  // Puntos de retos (resueltos)
+  try {
+    const rSheet = getOrCreateSheet('Retos',
+      ['id','retador_id','retador_nombre','retado_id','retado_nombre','partido_id','estado','pts_retador','pts_retado','resultado','timestamp']);
+    const rRows = rSheet.getDataRange().getValues();
+    const rH    = rRows[0];
+    for (let i = 1; i < rRows.length; i++) {
+      if (String(rRows[i][rH.indexOf('estado')]) !== 'resuelto') continue;
+      const retadorId = String(rRows[i][rH.indexOf('retador_id')]);
+      const retadoId  = String(rRows[i][rH.indexOf('retado_id')]);
+      const resultado = String(rRows[i][rH.indexOf('resultado')]);
+      if (retadorId !== String(pid) && retadoId !== String(pid)) continue;
+      const esRetador = retadorId === String(pid);
+      // ganador +1, perdedor -1, empate 0
+      if (resultado === 'empate') continue;
+      const ganoRetador = resultado === 'retador';
+      if (esRetador)  ptsSpec += ganoRetador ? 1 : -1;
+      else            ptsSpec += ganoRetador ? -1 : 1;
+    }
+  } catch(e) {}
+
   return { grupos: ptsGrupos, elim: ptsElim, spec: ptsSpec, total: ptsGrupos + ptsElim + ptsSpec };
 }
 
@@ -1756,7 +1780,8 @@ function syncResults() {
     updatePartidos(matches);
     syncScorers();
     calculateAllPoints();
-    resolveDailyDuels();
+    // resolveDailyDuels(); // desactivado — reemplazado por sistema de retos manuales
+    resolverRetos();
     Logger.log(`✅ Sync OK — ${matches.length} partidos — ${new Date().toLocaleString('es-ES')}`);
   } catch (err) {
     Logger.log('❌ Sync error: ' + err.message);
@@ -1829,7 +1854,8 @@ function setup() {
     'Goleadores':              ['jugador','equipo','goles','asistencias','partidos','timestamp'],
     'Preguntas_Vivo':          ['id','partido_id','pregunta','opciones','puntos','respuesta_correcta','estado','creada','cierra_en'],
     'Respuestas_Vivo':         ['pregunta_id','participante_id','respuesta','timestamp'],
-    'Duelos':                  ['fecha','pid_a','nombre_a','pid_b','nombre_b','pts_a','pts_b','resultado_a','resultado_b','resuelto']
+    'Duelos':                  ['fecha','pid_a','nombre_a','pid_b','nombre_b','pts_a','pts_b','resultado_a','resultado_b','resuelto'],
+    'Retos':                   ['id','retador_id','retador_nombre','retado_id','retado_nombre','partido_id','estado','pts_retador','pts_retado','resultado','timestamp']
   };
 
   for (const [name, headers] of Object.entries(schemas)) {
@@ -1853,9 +1879,8 @@ function setApiKey(key) {
 function setupTriggers() {
   ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('syncResults').timeBased().everyMinutes(5).create();
-  ScriptApp.newTrigger('generateDailyDuels').timeBased()
-    .atHour(0).nearMinute(5).everyDays(1).create();
-  Logger.log('✅ Triggers: syncResults() cada 5 min, generateDailyDuels() a medianoche.');
+  // generateDailyDuels desactivado — reemplazado por sistema de retos manuales
+  Logger.log('✅ Triggers: syncResults() cada 5 min.');
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -2141,6 +2166,269 @@ function resetDuelos(fecha) {
     count++;
   }
   Logger.log('resetDuelos: ' + count + ' duelos reseteados para ' + fecha);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  SISTEMA DE RETOS MANUALES
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Crea un reto de un jugador a otro sobre un partido concreto.
+ * Validaciones: 1 reto activo máximo por jugador, partido no bloqueado, no retarse a sí mismo.
+ */
+function crearReto(data) {
+  const { retadorId, retadorNombre, retadoId, retadoNombre, partidoId } = data;
+  if (!retadorId || !retadoId || !partidoId) return { error: 'Faltan datos' };
+  if (retadorId === retadoId) return { error: 'No puedes retarte a ti mismo' };
+
+  // Verificar que el partido existe y no está bloqueado
+  const mSheet = getSheet('Partidos');
+  const mRows  = mSheet.getDataRange().getValues();
+  const mH     = mRows[0];
+  let match = null;
+  for (let i = 1; i < mRows.length; i++) {
+    if (String(mRows[i][mH.indexOf('id')]) === String(partidoId)) {
+      match = {};
+      mH.forEach((h, j) => match[h] = mRows[i][j]);
+      break;
+    }
+  }
+  if (!match) return { error: 'Partido no encontrado' };
+  if (match.estado === 'FINISHED') return { error: 'Ese partido ya ha terminado' };
+  if (match.kickoff) {
+    const lockTime = new Date(new Date(match.kickoff).getTime() - 60 * 60 * 1000);
+    if (new Date() >= lockTime) return { error: 'Ese partido ya está cerrado para apuestas' };
+  }
+
+  const rSheet = getOrCreateSheet('Retos',
+    ['id','retador_id','retador_nombre','retado_id','retado_nombre','partido_id','estado','pts_retador','pts_retado','resultado','timestamp']);
+  const rRows = rSheet.getDataRange().getValues();
+  const rH    = rRows[0];
+
+  // Verificar que el retador no tiene ya un reto activo
+  for (let i = 1; i < rRows.length; i++) {
+    const est = String(rRows[i][rH.indexOf('estado')]);
+    if (est !== 'pendiente' && est !== 'aceptado') continue;
+    const rid = String(rRows[i][rH.indexOf('retador_id')]);
+    const tid = String(rRows[i][rH.indexOf('retado_id')]);
+    if (rid === String(retadorId) || tid === String(retadorId)) {
+      return { error: 'Ya tienes un reto activo. Espera a que se resuelva antes de crear otro.' };
+    }
+  }
+
+  // Verificar que el retado no tiene ya un reto activo
+  for (let i = 1; i < rRows.length; i++) {
+    const est = String(rRows[i][rH.indexOf('estado')]);
+    if (est !== 'pendiente' && est !== 'aceptado') continue;
+    const rid = String(rRows[i][rH.indexOf('retador_id')]);
+    const tid = String(rRows[i][rH.indexOf('retado_id')]);
+    if (rid === String(retadoId) || tid === String(retadoId)) {
+      return { error: retadoNombre + ' ya tiene un reto activo. Inténtalo después.' };
+    }
+  }
+
+  const id = Utilities.getUuid();
+  rSheet.appendRow([
+    id, retadorId, retadorNombre, retadoId, retadoNombre,
+    partidoId, 'pendiente', 0, 0, '', new Date().toISOString()
+  ]);
+  return { success: true, id };
+}
+
+/**
+ * El retado acepta o rechaza el reto.
+ */
+function responderReto(data) {
+  const { retoId, pid, accion } = data; // accion: 'aceptar' | 'rechazar'
+  if (!retoId || !pid || !accion) return { error: 'Faltan datos' };
+
+  const rSheet = getOrCreateSheet('Retos',
+    ['id','retador_id','retador_nombre','retado_id','retado_nombre','partido_id','estado','pts_retador','pts_retado','resultado','timestamp']);
+  const rRows = rSheet.getDataRange().getValues();
+  const rH    = rRows[0];
+
+  for (let i = 1; i < rRows.length; i++) {
+    if (String(rRows[i][rH.indexOf('id')]) !== String(retoId)) continue;
+    if (String(rRows[i][rH.indexOf('retado_id')]) !== String(pid)) return { error: 'No eres el retado' };
+    if (String(rRows[i][rH.indexOf('estado')]) !== 'pendiente') return { error: 'Este reto ya no está pendiente' };
+
+    const nuevoEstado = accion === 'aceptar' ? 'aceptado' : 'rechazado';
+    rSheet.getRange(i + 1, rH.indexOf('estado') + 1).setValue(nuevoEstado);
+    return { success: true, estado: nuevoEstado };
+  }
+  return { error: 'Reto no encontrado' };
+}
+
+/**
+ * Devuelve los retos activos (pendientes/aceptados) y el historial de un jugador.
+ */
+function getRetos(pid) {
+  if (!pid) return { error: 'pid requerido' };
+
+  const rSheet = getOrCreateSheet('Retos',
+    ['id','retador_id','retador_nombre','retado_id','retado_nombre','partido_id','estado','pts_retador','pts_retado','resultado','timestamp']);
+  const rRows = rSheet.getDataRange().getValues();
+  const rH    = rRows[0];
+
+  // Partidos para mostrar nombre
+  const mSheet = getSheet('Partidos');
+  const mRows  = mSheet.getDataRange().getValues();
+  const mH     = mRows[0];
+  const matchMap = {};
+  for (let i = 1; i < mRows.length; i++) {
+    if (!mRows[i][0]) continue;
+    const m = {};
+    mH.forEach((h, j) => m[h] = mRows[i][j]);
+    matchMap[String(m.id)] = m;
+  }
+
+  const activos   = []; // pendiente o aceptado que me afectan
+  const historial = []; // resueltos/rechazados/caducados
+  let ptsRetos = 0;
+
+  for (let i = 1; i < rRows.length; i++) {
+    if (!rRows[i][0]) continue;
+    const retadorId = String(rRows[i][rH.indexOf('retador_id')]);
+    const retadoId  = String(rRows[i][rH.indexOf('retado_id')]);
+    if (retadorId !== String(pid) && retadoId !== String(pid)) continue;
+
+    const esRetador  = retadorId === String(pid);
+    const estado     = String(rRows[i][rH.indexOf('estado')]);
+    const partidoId  = String(rRows[i][rH.indexOf('partido_id')]);
+    const match      = matchMap[partidoId] || {};
+    const resultado  = String(rRows[i][rH.indexOf('resultado')]);
+    const ptsR       = Number(rRows[i][rH.indexOf('pts_retador')]) || 0;
+    const ptsT       = Number(rRows[i][rH.indexOf('pts_retado')])  || 0;
+
+    const reto = {
+      id:            String(rRows[i][rH.indexOf('id')]),
+      retadorId,
+      retadorNombre: String(rRows[i][rH.indexOf('retador_nombre')]),
+      retadoId,
+      retadoNombre:  String(rRows[i][rH.indexOf('retado_nombre')]),
+      rival:         esRetador ? String(rRows[i][rH.indexOf('retado_nombre')]) : String(rRows[i][rH.indexOf('retador_nombre')]),
+      esRetador,
+      estado,
+      partidoId,
+      partido:       match.equipo_local ? `${match.equipo_local} vs ${match.equipo_visitante}` : '—',
+      kickoff:       match.kickoff || '',
+      resultado,
+      misPts:        esRetador ? ptsR : ptsT,
+      susPts:        esRetador ? ptsT : ptsR,
+      timestamp:     String(rRows[i][rH.indexOf('timestamp')])
+    };
+
+    // Calcular mi resultado personal
+    if (estado === 'resuelto') {
+      if (resultado === 'empate') reto.miResultado = 'empate';
+      else reto.miResultado = (resultado === 'retador') === esRetador ? 'ganado' : 'perdido';
+      const diff = (resultado === 'empate') ? 0 : ((resultado === 'retador') === esRetador ? 1 : -1);
+      ptsRetos += diff;
+    }
+
+    if (estado === 'pendiente' || estado === 'aceptado') activos.push(reto);
+    else historial.push(reto);
+  }
+
+  historial.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  return { activos, historial, ptsRetos };
+}
+
+/**
+ * Resuelve los retos aceptados cuyos partidos ya han terminado.
+ * Caduca los retos pendientes cuyo partido ya cerró sin ser aceptados.
+ * Se llama desde syncResults.
+ */
+function resolverRetos() {
+  const rSheet = getOrCreateSheet('Retos',
+    ['id','retador_id','retador_nombre','retado_id','retado_nombre','partido_id','estado','pts_retador','pts_retado','resultado','timestamp']);
+  const rRows = rSheet.getDataRange().getValues();
+  const rH    = rRows[0];
+
+  const mSheet = getSheet('Partidos');
+  const mRows  = mSheet.getDataRange().getValues();
+  const mH     = mRows[0];
+  const matchMap = {};
+  for (let i = 1; i < mRows.length; i++) {
+    if (!mRows[i][0]) continue;
+    const m = {};
+    mH.forEach((h, j) => m[h] = mRows[i][j]);
+    matchMap[String(m.id)] = m;
+  }
+
+  const predSheet = getSheet('Predicciones');
+  const predRows  = predSheet.getDataRange().getValues();
+  const predH     = predRows[0];
+
+  // Mapa pid → { mid → pts }
+  const ptsByPidMid = {};
+  for (let i = 1; i < predRows.length; i++) {
+    if (!predRows[i][0]) continue;
+    const pid = String(predRows[i][predH.indexOf('participante_id')]);
+    const mid = String(predRows[i][predH.indexOf('partido_id')]);
+    const match = matchMap[mid];
+    if (!match || match.estado !== 'FINISHED') continue;
+    const glP = Number(predRows[i][predH.indexOf('goles_local')]);
+    const gvP = Number(predRows[i][predH.indexOf('goles_visitante')]);
+    const glR = Number(match.goles_local);
+    const gvR = Number(match.goles_visitante);
+    if ([glP, gvP, glR, gvR].some(isNaN)) continue;
+    let pts = 0;
+    const isElim = match.fase && !match.fase.includes('GROUP');
+    if (glP === glR && gvP === gvR) pts = isElim ? 7 : 4;
+    else if (winner(glP, gvP) === winner(glR, gvR)) pts = isElim ? 4 : 2;
+    if (!ptsByPidMid[pid]) ptsByPidMid[pid] = {};
+    ptsByPidMid[pid][mid] = pts;
+  }
+
+  let resueltos = 0, caducados = 0;
+  const now = new Date();
+
+  for (let i = 1; i < rRows.length; i++) {
+    if (!rRows[i][0]) continue;
+    const estado    = String(rRows[i][rH.indexOf('estado')]);
+    const partidoId = String(rRows[i][rH.indexOf('partido_id')]);
+    const match     = matchMap[partidoId];
+    if (!match) continue;
+
+    // Caducar pendientes cuyo partido ya cerró
+    if (estado === 'pendiente') {
+      if (match.kickoff) {
+        const lockTime = new Date(new Date(match.kickoff).getTime() - 60 * 60 * 1000);
+        if (now >= lockTime) {
+          rSheet.getRange(i + 1, rH.indexOf('estado') + 1).setValue('caducado');
+          caducados++;
+        }
+      }
+      continue;
+    }
+
+    if (estado !== 'aceptado') continue;
+    if (match.estado !== 'FINISHED') continue;
+
+    const retadorId = String(rRows[i][rH.indexOf('retador_id')]);
+    const retadoId  = String(rRows[i][rH.indexOf('retado_id')]);
+    const ptsRetador = (ptsByPidMid[retadorId] && ptsByPidMid[retadorId][partidoId]) || 0;
+    const ptsRetado  = (ptsByPidMid[retadoId]  && ptsByPidMid[retadoId][partidoId])  || 0;
+
+    let resultado;
+    if (ptsRetador > ptsRetado)      resultado = 'retador';
+    else if (ptsRetado > ptsRetador) resultado = 'retado';
+    else                             resultado = 'empate';
+
+    const row = i + 1;
+    rSheet.getRange(row, rH.indexOf('pts_retador') + 1).setValue(ptsRetador);
+    rSheet.getRange(row, rH.indexOf('pts_retado')  + 1).setValue(ptsRetado);
+    rSheet.getRange(row, rH.indexOf('resultado')   + 1).setValue(resultado);
+    rSheet.getRange(row, rH.indexOf('estado')      + 1).setValue('resuelto');
+    resueltos++;
+  }
+
+  if (resueltos > 0 || caducados > 0) {
+    Logger.log(`resolverRetos: ${resueltos} resueltos, ${caducados} caducados.`);
+    // Recalcular puntuaciones afectadas
+    if (resueltos > 0) calculateAllPoints();
+  }
 }
 
 function testApiConnection() {

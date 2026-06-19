@@ -647,8 +647,8 @@
       .cagada-card .cronica-tag { background: rgba(139,92,246,.15); color: #a78bfa; }
       .cagada-marcador { font-size: .82rem; color: var(--muted); margin-bottom: 10px; font-family: monospace; letter-spacing: .03em; }
       .cagada-marcador strong { color: var(--text); }
-      /* ——— Duelos diarios ——— */
-      .duelos-hoy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; margin-bottom: 18px; }
+      /* ——— Retos / Duelo del Día ——— */
+      .duelos-hoy-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
       .duelo-card {
         background: var(--card); border: 1px solid var(--border);
         border-radius: var(--radius); padding: 14px 16px;
@@ -657,28 +657,46 @@
       .duelo-card.win  { border-color: rgba(34,197,94,.3);  background: linear-gradient(135deg, rgba(34,197,94,.05) 0%, var(--card) 100%); }
       .duelo-card.loss { border-color: rgba(239,68,68,.25); background: linear-gradient(135deg, rgba(239,68,68,.04) 0%, var(--card) 100%); }
       .duelo-card.draw { border-color: rgba(240,180,41,.25); background: linear-gradient(135deg, rgba(240,180,41,.04) 0%, var(--card) 100%); }
+      .duelo-card.pendiente-card { border-color: rgba(99,102,241,.25); background: linear-gradient(135deg, rgba(99,102,241,.04) 0%, var(--card) 100%); }
       .duelo-vs { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
       .duelo-nombre { font-weight: 600; font-size: .9rem; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .duelo-pts { font-size: 1.15rem; font-weight: 700; min-width: 28px; text-align: center; }
       .duelo-sep { color: var(--muted); font-size: .75rem; font-weight: 700; padding: 0 2px; }
+      .duelo-partido { font-size: .78rem; color: var(--muted); margin-top: 2px; }
       .duelo-badge {
         font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
         padding: 3px 8px; border-radius: 4px; white-space: nowrap;
       }
-      .duelo-badge.W  { background: rgba(34,197,94,.15);  color: var(--green); }
-      .duelo-badge.L  { background: rgba(239,68,68,.12);  color: var(--red); }
-      .duelo-badge.D  { background: rgba(240,180,41,.12); color: var(--gold); }
-      .duelo-badge.pendiente { background: rgba(100,116,139,.15); color: var(--muted); }
-      .duelos-tabla { width: 100%; border-collapse: collapse; font-size: .88rem; }
-      .duelos-tabla th { color: var(--muted); font-weight: 600; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: center; }
-      .duelos-tabla th:first-child { text-align: left; }
-      .duelos-tabla td { padding: 9px 10px; border-bottom: 1px solid rgba(255,255,255,.03); text-align: center; }
-      .duelos-tabla td:first-child { text-align: left; font-weight: 600; }
-      .duelos-tabla tr:last-child td { border-bottom: none; }
-      .duelos-tabla .dt-yo { background: rgba(240,180,41,.04); }
-      .duelos-tabla .dt-pts { color: var(--gold); font-weight: 700; }
-      .duelos-toggle { cursor: pointer; font-size: .8rem; color: var(--muted); margin-top: 10px; display: inline-block; }
-      .duelos-toggle:hover { color: var(--text); }
+      .duelo-badge.W, .duelo-badge.ganado   { background: rgba(34,197,94,.15);  color: var(--green); }
+      .duelo-badge.L, .duelo-badge.perdido  { background: rgba(239,68,68,.12);  color: var(--red); }
+      .duelo-badge.D, .duelo-badge.empate   { background: rgba(240,180,41,.12); color: var(--gold); }
+      .duelo-badge.pendiente, .duelo-badge.aceptado { background: rgba(99,102,241,.15); color: #a5b4fc; }
+      .duelo-badge.caducado  { background: rgba(100,116,139,.15); color: var(--muted); }
+      .duelo-acciones { display: flex; gap: 6px; }
+      .btn-aceptar { background: rgba(34,197,94,.15); color: var(--green); border: 1px solid rgba(34,197,94,.3); border-radius: 6px; padding: 5px 12px; font-size: .8rem; font-weight: 700; cursor: pointer; }
+      .btn-rechazar { background: rgba(239,68,68,.1); color: var(--red); border: 1px solid rgba(239,68,68,.25); border-radius: 6px; padding: 5px 12px; font-size: .8rem; font-weight: 700; cursor: pointer; }
+      .btn-retar { background: var(--gold); color: #000; border: none; border-radius: 8px; padding: 8px 18px; font-size: .88rem; font-weight: 700; cursor: pointer; margin-bottom: 14px; }
+      .btn-retar:hover { opacity: .88; }
+      /* Modal reto */
+      .reto-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+      .reto-modal { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; width: 100%; max-width: 420px; }
+      .reto-modal h3 { font-family: "Bebas Neue", cursive; font-size: 1.4rem; letter-spacing: .05em; margin-bottom: 18px; }
+      .reto-modal label { font-size: .8rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; display: block; margin-bottom: 5px; margin-top: 14px; }
+      .reto-modal select { width: 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 10px 12px; font-size: .9rem; }
+      .reto-modal-btns { display: flex; gap: 10px; margin-top: 20px; }
+      .reto-modal-btns button { flex: 1; padding: 10px; border-radius: 8px; font-weight: 700; font-size: .9rem; cursor: pointer; border: none; }
+      .btn-confirmar-reto { background: var(--gold); color: #000; }
+      .btn-cancelar-reto  { background: var(--surface); color: var(--muted); border: 1px solid var(--border) !important; }
+      .reto-empty { color: var(--muted); font-size: .88rem; padding: 8px 0; }
+      /* Popup reto entrante */
+      .reto-popup { position: fixed; bottom: 80px; right: 20px; z-index: 999; background: var(--card); border: 1px solid rgba(99,102,241,.4); border-radius: 14px; padding: 18px 20px; max-width: 320px; box-shadow: 0 8px 32px rgba(0,0,0,.4); }
+      .reto-popup-title { font-family: "Bebas Neue", cursive; font-size: 1.1rem; letter-spacing: .05em; margin-bottom: 6px; color: #a5b4fc; }
+      .reto-popup-body  { font-size: .88rem; margin-bottom: 14px; line-height: 1.5; }
+      .reto-popup-btns  { display: flex; gap: 8px; }
+      .reto-popup-btns button { flex: 1; padding: 8px; border-radius: 7px; font-weight: 700; font-size: .82rem; cursor: pointer; border: none; }
+      @media (max-width: 640px) {
+        .reto-popup { bottom: 70px; right: 12px; left: 12px; max-width: unset; }
+      }
 
       /* ——— Ranking evolution chart ——— */
       .chart-toggle-row {
@@ -1054,23 +1072,41 @@
 
     </div>
 
-    <!-- DUELOS DIARIOS -->
-    <div class="section" id="duelosSection" style="display:none">
+    <!-- DUELO DEL DÍA (Retos) -->
+    <div class="section" id="duelosSection">
       <div class="section-header">
         <div class="section-title">🥊 Duelo del Día</div>
-        <div class="section-meta" id="duelosMeta">—</div>
+        <div class="section-meta" id="duelosMeta">Reta a quien quieras</div>
       </div>
-      <!-- Tarjetas duelos de hoy -->
-      <div class="duelos-hoy-grid" id="duelosHoyGrid"></div>
-      <!-- Tabla clasificación general (colapsable) -->
-      <span class="duelos-toggle" id="duelosToggle" onclick="toggleDuelosTabla()">▼ Ver tabla general de duelos</span>
-      <div id="duelosTablaWrap" style="display:none; margin-top:12px;">
-        <div class="table-wrap">
-          <table class="duelos-tabla">
-            <thead><tr><th>Jugador</th><th>V</th><th>E</th><th>D</th><th>Pts</th></tr></thead>
-            <tbody id="duelosTablaBody"></tbody>
-          </table>
+      <button class="btn-retar" id="btnRetar" onclick="abrirModalReto()" style="display:none">⚔️ Retar a alguien</button>
+      <div class="duelos-hoy-grid" id="duelosHoyGrid">
+        <div class="reto-empty">Cargando retos...</div>
+      </div>
+    </div>
+
+    <!-- MODAL CREAR RETO -->
+    <div class="reto-modal-overlay" id="retoModalOverlay" style="display:none" onclick="cerrarModalReto(event)">
+      <div class="reto-modal" onclick="event.stopPropagation()">
+        <h3>⚔️ Lanzar un Reto</h3>
+        <label>¿A quién retas?</label>
+        <select id="retoSelectRival"></select>
+        <label>¿En qué partido?</label>
+        <select id="retoSelectPartido"></select>
+        <div id="retoModalError" style="color:var(--red);font-size:.82rem;margin-top:10px;display:none"></div>
+        <div class="reto-modal-btns">
+          <button class="btn-cancelar-reto" onclick="cerrarModalReto()">Cancelar</button>
+          <button class="btn-confirmar-reto" onclick="confirmarReto()">Retar</button>
         </div>
+      </div>
+    </div>
+
+    <!-- POPUP RETO ENTRANTE -->
+    <div class="reto-popup" id="retoPopup" style="display:none">
+      <div class="reto-popup-title">🥊 ¡Te han retado!</div>
+      <div class="reto-popup-body" id="retoPopupBody"></div>
+      <div class="reto-popup-btns">
+        <button class="btn-rechazar" onclick="responderRetoPopup('rechazar')">Rechazar</button>
+        <button class="btn-aceptar"  onclick="responderRetoPopup('aceptar')">Aceptar</button>
       </div>
     </div>
 
@@ -1187,7 +1223,15 @@
 
       const MEDALS = ["🥇", "🥈", "🥉"];
 
-      async function api(params) {
+      async function api(params, method) {
+        if (method === 'POST') {
+          const res = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(params)
+          });
+          return res.json();
+        }
         const url = SCRIPT_URL + "?" + new URLSearchParams(params);
         const res = await fetch(url);
         return res.json();
@@ -1234,6 +1278,7 @@
         try {
           const { ranking, updated } = await api({ action: "getRanking" });
           const { participants } = await api({ action: "getStats" });
+          if (ranking) _allPlayers = ranking; // para modal de retos
           document.getElementById("statParts").textContent =
             participants ?? ranking.length;
 
@@ -1301,7 +1346,7 @@
             </td>
             <td class="rank-pts-cell">
               <div class="rank-total">${p.total || 0}</div>
-              <div class="rank-breakdown"><span title="Fase de grupos">⚽ ${p.pts_grupos || 0}</span> · <span title="Eliminatorias">⚡ ${p.pts_eliminatorias || 0}</span> · <span title="Especiales">🌟 ${p.pts_especiales || 0}</span></div>
+              <div class="rank-breakdown"><span title="Fase de grupos">⚽ ${p.pts_grupos || 0}</span> · <span title="Eliminatorias">⚡ ${p.pts_eliminatorias || 0}</span> · <span title="Especiales + Retos">🌟 ${p.pts_especiales || 0}</span></div>
             </td>
           </tr>`;
           }
@@ -1656,70 +1701,170 @@
         res.innerHTML = html; res.style.display = 'block';
       }
 
-      // ——— Duelos diarios ———
+      // ——— Retos / Duelo del Día ———
+      let _retoPendienteId = null;
+      let _allPlayers = [];
+      let _allMatches = [];
+
       async function loadDuelos() {
         try {
-          const { ranking, hoy } = await api({ action: 'getDuelos' });
-          if (!ranking || !ranking.length) return;
-
           const raw = localStorage.getItem('porra2026_user');
-          const myPid = raw ? (JSON.parse(raw).id || '') : '';
+          if (!raw) { document.getElementById('duelosSection').style.display = 'none'; return; }
+          const me = JSON.parse(raw);
+          if (!me.id) { document.getElementById('duelosSection').style.display = 'none'; return; }
 
-          // Tarjetas del día
-          let hoyHtml = '';
-          if (hoy && hoy.length) {
-            hoy.forEach(d => {
-              const esA = d.pidA === myPid;
-              const esB = d.pidB === myPid;
-              let cardClass = '';
-              if (d.resuelto && (esA || esB)) {
-                const miRes = esA ? d.resA : d.resB;
-                cardClass = miRes === 'W' ? 'win' : miRes === 'L' ? 'loss' : 'draw';
+          const { activos, historial, ptsRetos } = await api({ action: 'getRetos', pid: me.id });
+
+          // Mostrar botón retar solo si no tengo reto activo
+          const tengoActivo = activos && activos.some(r =>
+            r.retadorId === me.id || r.retadoId === me.id
+          );
+          document.getElementById('btnRetar').style.display = tengoActivo ? 'none' : 'inline-block';
+
+          const grid = document.getElementById('duelosHoyGrid');
+          let html = '';
+
+          // Retos activos primero
+          if (activos && activos.length) {
+            activos.forEach(r => {
+              const soyRetador = r.retadorId === me.id;
+              const esParaMi   = r.retadoId  === me.id && r.estado === 'pendiente';
+              let cardClass = 'pendiente-card';
+              let badgeLabel = r.estado === 'pendiente' ? 'Pendiente' : 'Aceptado';
+              let badgeClass = r.estado === 'pendiente' ? 'pendiente' : 'aceptado';
+              let accionesHtml = '';
+
+              if (esParaMi) {
+                _retoPendienteId = r.id;
+                // Mostrar popup
+                document.getElementById('retoPopupBody').innerHTML =
+                  `<strong>${escHtml(r.retadorNombre)}</strong> te reta en el partido <strong>${escHtml(r.partido)}</strong>.<br>¿Lo aceptas?`;
+                document.getElementById('retoPopup').style.display = 'block';
+                accionesHtml = `<div class="duelo-acciones">
+                  <button class="btn-rechazar" onclick="responderRetoPopup('rechazar')">Rechazar</button>
+                  <button class="btn-aceptar"  onclick="responderRetoPopup('aceptar')">Aceptar</button>
+                </div>`;
               }
-              const badgeA = d.resuelto
-                ? `<span class="duelo-badge ${d.resA}">${d.resA==='W'?'Victoria':d.resA==='L'?'Derrota':'Empate'}</span>`
-                : `<span class="duelo-badge pendiente">En juego</span>`;
-              hoyHtml += `<div class="duelo-card ${cardClass}">
-                <div class="duelo-vs">
-                  <span class="duelo-nombre">${escHtml(d.nomA)}</span>
-                  <span class="duelo-pts">${d.pts_a_display !== undefined ? d.pts_a_display : (d.resuelto ? d.ptsA : '—')}</span>
-                  <span class="duelo-sep">vs</span>
-                  <span class="duelo-pts">${d.resuelto ? d.ptsB : '—'}</span>
-                  <span class="duelo-nombre" style="text-align:right">${escHtml(d.nomB)}</span>
+
+              html += `<div class="duelo-card ${cardClass}">
+                <div style="flex:1;min-width:0">
+                  <div class="duelo-vs">
+                    <span class="duelo-nombre">${escHtml(r.retadorNombre)}</span>
+                    <span class="duelo-sep">vs</span>
+                    <span class="duelo-nombre">${escHtml(r.retadoNombre)}</span>
+                    <span class="duelo-badge ${badgeClass}">${badgeLabel}</span>
+                  </div>
+                  <div class="duelo-partido">⚽ ${escHtml(r.partido)}</div>
                 </div>
-                ${badgeA}
+                ${accionesHtml}
               </div>`;
             });
-            document.getElementById('duelosHoyGrid').innerHTML = hoyHtml;
-            const fecha = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
-            document.getElementById('duelosMeta').textContent = fecha;
-          } else {
-            document.getElementById('duelosHoyGrid').innerHTML = '<div style="color:var(--muted);font-size:.88rem;padding:8px 0">No hay duelos programados hoy</div>';
           }
 
-          // Tabla general
-          const myRow = ranking.find(r => r.pid === myPid);
-          document.getElementById('duelosTablaBody').innerHTML = ranking.map((r, i) => {
-            const isMe = r.pid === myPid;
-            return `<tr class="${isMe ? 'dt-yo' : ''}">
-              <td>${i + 1}. ${escHtml(r.nombre)}${isMe ? ' <span style="color:var(--gold);font-size:.72rem">tú</span>' : ''}</td>
-              <td style="color:var(--green)">${r.W}</td>
-              <td style="color:var(--gold)">${r.D}</td>
-              <td style="color:var(--red)">${r.L}</td>
-              <td class="dt-pts">${r.pts}</td>
-            </tr>`;
-          }).join('');
+          // Historial reciente (últimos 5)
+          if (historial && historial.length) {
+            const recientes = historial.slice(0, 5);
+            recientes.forEach(r => {
+              const res = r.miResultado || r.estado;
+              const badgeMap = { ganado: 'ganado', perdido: 'perdido', empate: 'empate', rechazado: 'caducado', caducado: 'caducado' };
+              const labelMap = { ganado: '🏆 Victoria +1', perdido: '💀 Derrota -1', empate: '🤝 Empate', rechazado: 'Rechazado', caducado: 'Caducado' };
+              const cardMap  = { ganado: 'win', perdido: 'loss', empate: 'draw' };
+              html += `<div class="duelo-card ${cardMap[res] || ''}">
+                <div style="flex:1;min-width:0">
+                  <div class="duelo-vs">
+                    <span class="duelo-nombre">${escHtml(r.rival)}</span>
+                    <span class="duelo-sep">·</span>
+                    <span class="duelo-pts" style="font-size:.9rem">${r.misPts ?? '—'} <span style="color:var(--muted);font-size:.75rem">vs</span> ${r.susPts ?? '—'}</span>
+                    <span class="duelo-badge ${badgeMap[res] || ''}">${labelMap[res] || res}</span>
+                  </div>
+                  <div class="duelo-partido">⚽ ${escHtml(r.partido)}</div>
+                </div>
+              </div>`;
+            });
+          }
 
-          document.getElementById('duelosSection').style.display = 'block';
-        } catch(e) { console.warn('Duelos error:', e); }
+          if (!html) html = '<div class="reto-empty">No tienes retos activos. ¡Reta a alguien! ⚔️</div>';
+          grid.innerHTML = html;
+
+        } catch(e) { console.warn('Retos error:', e); }
       }
 
-      function toggleDuelosTabla() {
-        const wrap   = document.getElementById('duelosTablaWrap');
-        const toggle = document.getElementById('duelosToggle');
-        const open   = wrap.style.display === 'none';
-        wrap.style.display   = open ? 'block' : 'none';
-        toggle.textContent   = open ? '▲ Ocultar tabla general' : '▼ Ver tabla general de duelos';
+      function abrirModalReto() {
+        // Poblar lista de jugadores (excluyendo yo mismo)
+        const raw = localStorage.getItem('porra2026_user');
+        const me  = raw ? JSON.parse(raw) : {};
+        const selRival = document.getElementById('retoSelectRival');
+        selRival.innerHTML = _allPlayers
+          .filter(p => p.participante_id !== me.id)
+          .map(p => `<option value="${escHtml(p.participante_id)}" data-nombre="${escHtml(p.nombre)}">${escHtml(p.nombre)}</option>`)
+          .join('');
+
+        // Poblar partidos futuros no bloqueados
+        const now = new Date();
+        const selPartido = document.getElementById('retoSelectPartido');
+        const futuros = (_allMatchesData || []).filter(m => {
+          if (m.estado === 'FINISHED') return false;
+          if (!m.kickoff) return true;
+          const lock = new Date(new Date(m.kickoff).getTime() - 60 * 60 * 1000);
+          return now < lock;
+        });
+        selPartido.innerHTML = futuros.map(m =>
+          `<option value="${m.id}">${escHtml(m.equipo_local)} vs ${escHtml(m.equipo_visitante)}</option>`
+        ).join('');
+
+        document.getElementById('retoModalError').style.display = 'none';
+        document.getElementById('retoModalOverlay').style.display = 'flex';
+      }
+
+      function cerrarModalReto(e) {
+        if (e && e.target !== document.getElementById('retoModalOverlay')) return;
+        document.getElementById('retoModalOverlay').style.display = 'none';
+      }
+
+      async function confirmarReto() {
+        const raw = localStorage.getItem('porra2026_user');
+        const me  = raw ? JSON.parse(raw) : {};
+        const selRival   = document.getElementById('retoSelectRival');
+        const selPartido = document.getElementById('retoSelectPartido');
+        const errEl      = document.getElementById('retoModalError');
+
+        if (!selRival.value || !selPartido.value) return;
+        const retadoOpt   = selRival.options[selRival.selectedIndex];
+        const retadoNombre = retadoOpt.getAttribute('data-nombre');
+
+        try {
+          const res = await api({
+            action: 'crearReto',
+            retadorId:     me.id,
+            retadorNombre: me.nombre,
+            retadoId:      selRival.value,
+            retadoNombre,
+            partidoId:     selPartido.value
+          }, 'POST');
+
+          if (res.error) {
+            errEl.textContent = res.error;
+            errEl.style.display = 'block';
+            return;
+          }
+          document.getElementById('retoModalOverlay').style.display = 'none';
+          loadDuelos();
+        } catch(e) {
+          errEl.textContent = 'Error al crear el reto. Inténtalo de nuevo.';
+          errEl.style.display = 'block';
+        }
+      }
+
+      async function responderRetoPopup(accion) {
+        if (!_retoPendienteId) return;
+        const raw = localStorage.getItem('porra2026_user');
+        const me  = raw ? JSON.parse(raw) : {};
+        document.getElementById('retoPopup').style.display = 'none';
+        try {
+          await api({ action: 'responderReto', retoId: _retoPendienteId, pid: me.id, accion }, 'POST');
+          _retoPendienteId = null;
+          loadDuelos();
+        } catch(e) { console.warn('responderReto error:', e); }
       }
 
       // ——— Auto-refresh ———

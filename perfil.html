@@ -353,10 +353,11 @@
           <div class="duelo-res-card W"><div class="duelo-res-val" id="dpW">0</div><div class="duelo-res-lbl">Victorias</div></div>
           <div class="duelo-res-card D"><div class="duelo-res-val" id="dpD">0</div><div class="duelo-res-lbl">Empates</div></div>
           <div class="duelo-res-card L"><div class="duelo-res-val" id="dpL">0</div><div class="duelo-res-lbl">Derrotas</div></div>
+          <div class="duelo-res-card" style="border-color:rgba(240,180,41,.3)"><div class="duelo-res-val" id="dpPts" style="color:var(--gold)">0</div><div class="duelo-res-lbl">Puntos retos</div></div>
         </div>
         <div class="table-wrap">
           <table class="duelos-hist-table">
-            <thead><tr><th>Fecha</th><th>Rival</th><th>Pts</th><th>Resultado</th></tr></thead>
+            <thead><tr><th>Rival</th><th>Partido</th><th>Pts</th><th>Resultado</th></tr></thead>
             <tbody id="duelosHistBody"></tbody>
           </table>
         </div>
@@ -394,12 +395,12 @@
           api({ action:'getProfile',      pid }),
           api({ action:'getAchievements', pid }),
           api({ action:'getHistory',      pid }),
-          api({ action:'getDuelosJugador', pid })
+          api({ action:'getRetos',        pid })
         ]);
         renderProfile(pr);
         renderAchievements(ar.achievements || []);
         renderChart(hr.history || []);
-        renderDuelos(dr);
+        renderRetos(dr);
         show('profile');
       } catch(e) {
         console.warn(e);
@@ -571,28 +572,42 @@
       });
     }
 
-    function renderDuelos(dr) {
+    function renderRetos(dr) {
       if (!dr || dr.error) return;
-      const { historial = [], W = 0, D = 0, L = 0 } = dr;
-      if (!historial.length && W === 0 && D === 0 && L === 0) return;
+      const { activos = [], historial = [], ptsRetos = 0 } = dr;
+      const total = activos.length + historial.length;
+      if (!total) return;
 
-      document.getElementById('dpW').textContent = W;
-      document.getElementById('dpD').textContent = D;
-      document.getElementById('dpL').textContent = L;
+      // Contar W/D/L de resueltos
+      let W = 0, D = 0, L = 0;
+      historial.forEach(r => {
+        if (r.miResultado === 'ganado')  W++;
+        else if (r.miResultado === 'empate') D++;
+        else if (r.miResultado === 'perdido') L++;
+      });
+
+      document.getElementById('dpW').textContent  = W;
+      document.getElementById('dpD').textContent  = D;
+      document.getElementById('dpL').textContent  = L;
+      document.getElementById('dpPts').textContent = (ptsRetos > 0 ? '+' : '') + ptsRetos;
 
       const tbody = document.getElementById('duelosHistBody');
-      if (!historial.length) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">Aún no hay duelos disputados</td></tr>';
+      const labelRes = { ganado: '🏆 Victoria', perdido: '💀 Derrota', empate: '🤝 Empate', rechazado: 'Rechazado', caducado: 'Caducado' };
+      const badgeClass = { ganado: 'W', perdido: 'L', empate: 'D', rechazado: 'caducado', caducado: 'caducado' };
+
+      const todos = [...activos, ...historial];
+      if (!todos.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">Aún no hay retos</td></tr>';
       } else {
-        const labelRes = { W: 'Victoria', L: 'Derrota', D: 'Empate', pendiente: 'En juego' };
-        tbody.innerHTML = historial.map(d => {
-          const res = d.resuelto ? d.resultado : 'pendiente';
-          const ptsStr = d.resuelto ? `${d.misPts} – ${d.susPts}` : '—';
+        tbody.innerHTML = todos.map(r => {
+          const res = r.miResultado || r.estado;
+          const ptsStr = r.estado === 'resuelto' ? `${r.misPts ?? '—'} – ${r.susPts ?? '—'}` : '—';
+          const badge = `<span class="dh-badge ${badgeClass[res] || 'caducado'}">${labelRes[res] || res}</span>`;
           return `<tr>
-            <td style="color:var(--muted);font-size:.82rem">${d.fecha}</td>
-            <td style="font-weight:600">${escHtml(d.rival)}</td>
+            <td style="font-weight:600">${escHtml(r.rival)}</td>
+            <td style="font-size:.8rem;color:var(--muted)">${escHtml(r.partido || '—')}</td>
             <td style="color:var(--muted)">${ptsStr}</td>
-            <td><span class="dh-badge ${res}">${labelRes[res] || res}</span></td>
+            <td>${badge}</td>
           </tr>`;
         }).join('');
       }
