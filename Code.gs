@@ -637,9 +637,96 @@ function getDailyComment() {
 
   const seed = lider.total + colista.total + new Date().getDate() + new Date().getMonth();
 
+  // ── La Cagada del Día ──
+  // Busca el pick más equivocado del último día con partidos finalizados
+  let cagada = null;
+  try {
+    const mSheet    = getSheet('Partidos');
+    const mRows     = mSheet.getDataRange().getValues();
+    const mH        = mRows[0];
+    const predSheet = getSheet('Predicciones');
+    const predRows  = predSheet.getDataRange().getValues();
+    const predH     = predRows[0];
+    const partSheet = getSheet('Participantes');
+    const partRows  = partSheet.getDataRange().getValues();
+
+    // Mapa nombre por id
+    const nombreById = {};
+    for (let i = 1; i < partRows.length; i++) {
+      if (partRows[i][0]) nombreById[String(partRows[i][0])] = String(partRows[i][1]);
+    }
+
+    // Encontrar el último día con partidos FINISHED (en hora Madrid)
+    const finishedByDay = {};
+    for (let i = 1; i < mRows.length; i++) {
+      if (!mRows[i][0]) continue;
+      const m = {};
+      mH.forEach((h, j) => m[h] = mRows[i][j]);
+      if (m.estado !== 'FINISHED' || !m.kickoff) continue;
+      const ko = m.kickoff instanceof Date ? m.kickoff : new Date(m.kickoff);
+      const dia = Utilities.formatDate(ko, 'Europe/Madrid', 'yyyy-MM-dd');
+      if (!finishedByDay[dia]) finishedByDay[dia] = [];
+      finishedByDay[dia].push(m);
+    }
+
+    // Último día con partidos finalizados
+    const dias = Object.keys(finishedByDay).sort();
+    if (!dias.length) throw new Error('sin días');
+    const ultimoDia = dias[dias.length - 1];
+    const partidosDelDia = finishedByDay[ultimoDia];
+    const matchMap = {};
+    partidosDelDia.forEach(m => matchMap[String(m.id)] = m);
+
+    // Buscar el pick con mayor error total
+    let maxError = -1;
+    for (let i = 1; i < predRows.length; i++) {
+      if (!predRows[i][0]) continue;
+      const mid   = String(predRows[i][predH.indexOf('partido_id')]);
+      const match = matchMap[mid];
+      if (!match) continue;
+      const predL = Number(predRows[i][predH.indexOf('goles_local')]);
+      const predV = Number(predRows[i][predH.indexOf('goles_visitante')]);
+      const realL = Number(match.goles_local);
+      const realV = Number(match.goles_visitante);
+      if (isNaN(predL) || isNaN(predV) || isNaN(realL) || isNaN(realV)) continue;
+      const error = Math.abs(predL - realL) + Math.abs(predV - realV);
+      if (error > maxError) {
+        maxError = error;
+        const pid = String(predRows[i][predH.indexOf('participante_id')]);
+        cagada = {
+          nombre:    nombreById[pid] || 'Alguien',
+          predL, predV, realL, realV,
+          local:     match.equipo_local     || match.home_team || '?',
+          visitante: match.equipo_visitante || match.away_team || '?',
+          error,
+          dia: ultimoDia
+        };
+      }
+    }
+
+    // Umbral mínimo de 2 goles de diferencia
+    if (cagada && cagada.error < 2) cagada = null;
+
+    if (cagada) {
+      const cagadaLines = [
+        `${cagada.nombre} apostó ${cagada.predL}-${cagada.predV} en el ${cagada.local} vs ${cagada.visitante}. El resultado fue ${cagada.realL}-${cagada.realV}. Hay que tener valor. 💩`,
+        `Alguien tenía mucha fe. Ese alguien era ${cagada.nombre}. Predijo ${cagada.predL}-${cagada.predV} en el ${cagada.local} vs ${cagada.visitante}. El universo respondió ${cagada.realL}-${cagada.realV}. 🌍`,
+        `${cagada.nombre} veía el partido diferente al resto del mundo. Muy diferente. ${cagada.predL}-${cagada.predV} vs ${cagada.realL}-${cagada.realV} en el ${cagada.local} vs ${cagada.visitante}. 🔭`,
+        `La pick del día la firma ${cagada.nombre}: ${cagada.predL}-${cagada.predV} cuando el ${cagada.local} vs ${cagada.visitante} acabó ${cagada.realL}-${cagada.realV}. Ni los comentaristas de TVE la vieron tan mal. 📺`,
+        `${cagada.nombre} apostó ${cagada.predL}-${cagada.predV}. El ${cagada.local} vs ${cagada.visitante} acabó ${cagada.realL}-${cagada.realV}. Con ${cagada.error} goles de diferencia, esto ya no es mala suerte. Es un don. 🎁`,
+        `Archivo histórico de picks imposibles: ${cagada.nombre}, ${cagada.local} vs ${cagada.visitante}, pronóstico ${cagada.predL}-${cagada.predV}, realidad ${cagada.realL}-${cagada.realV}. Para la posteridad. 🗃️`,
+      ];
+      cagada.comment = cagadaLines[(seed + 7) % cagadaLines.length];
+    }
+  } catch(e) {
+    Logger.log('Cagada error: ' + e);
+    cagada = null;
+  }
+
   return {
     lider:   { nombre: lider.nombre,   total: lider.total,   pos: lider.pos,   comment: liderLines[seed % liderLines.length] },
     colista: { nombre: colista.nombre, total: colista.total, pos: colista.pos, comment: colistaLines[(seed + 4) % colistaLines.length] },
+    cagada,
     date: new Date().toISOString().slice(0, 10),
     totalPlayers: ranking.length
   };
