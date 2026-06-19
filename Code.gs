@@ -1984,7 +1984,8 @@ function resolveDailyDuels() {
     const mid = String(pred.partido_id);
     const match = matchMap[mid];
     if (!match) continue;
-    const fecha = String(match.kickoff).slice(0, 10);
+    const koDate = match.kickoff instanceof Date ? match.kickoff : new Date(match.kickoff);
+    const fecha = Utilities.formatDate(koDate, 'Europe/Madrid', 'yyyy-MM-dd');
     const pts   = calcPickPts(pred, match);
     const pid   = String(pred.participante_id);
     if (!ptsByPidByDate[pid]) ptsByPidByDate[pid] = {};
@@ -2113,6 +2114,33 @@ function getDuelosJugador(pid) {
 
   historial.sort((a, b) => b.fecha.localeCompare(a.fecha));
   return { historial, W, D, L };
+}
+
+/**
+ * Resetea los duelos de una fecha para que puedan recalcularse.
+ * Uso: resetDuelos('2026-06-19')
+ * Después ejecuta resolveDailyDuels()
+ */
+function resetDuelos(fecha) {
+  if (!fecha) fecha = todayMadrid();
+  const dSheet = getOrCreateSheet('Duelos',
+    ['fecha','pid_a','nombre_a','pid_b','nombre_b','pts_a','pts_b','resultado_a','resultado_b','resuelto']);
+  const dRows = dSheet.getDataRange().getValues();
+  const dH    = dRows[0];
+  let count = 0;
+  for (let i = 1; i < dRows.length; i++) {
+    const rawF = dRows[i][0];
+    const f = rawF instanceof Date ? Utilities.formatDate(rawF, 'Europe/Madrid', 'yyyy-MM-dd') : String(rawF).slice(0, 10);
+    if (f !== fecha) continue;
+    const row = i + 1;
+    dSheet.getRange(row, dH.indexOf('pts_a')      + 1).setValue(0);
+    dSheet.getRange(row, dH.indexOf('pts_b')      + 1).setValue(0);
+    dSheet.getRange(row, dH.indexOf('resultado_a')+ 1).setValue('pendiente');
+    dSheet.getRange(row, dH.indexOf('resultado_b')+ 1).setValue('pendiente');
+    dSheet.getRange(row, dH.indexOf('resuelto')   + 1).setValue(false);
+    count++;
+  }
+  Logger.log('resetDuelos: ' + count + ' duelos reseteados para ' + fecha);
 }
 
 function testApiConnection() {
