@@ -1799,15 +1799,18 @@
           .map(p => `<option value="${escHtml(p.participante_id)}" data-nombre="${escHtml(p.nombre)}">${escHtml(p.nombre)}</option>`)
           .join('');
 
-        // Poblar partidos futuros no bloqueados
+        // Poblar los próximos 4 partidos no bloqueados
         const now = new Date();
         const selPartido = document.getElementById('retoSelectPartido');
-        const futuros = (_allMatchesData || []).filter(m => {
-          if (m.estado === 'FINISHED') return false;
-          if (!m.kickoff) return true;
-          const lock = new Date(new Date(m.kickoff).getTime() - 60 * 60 * 1000);
-          return now < lock;
-        });
+        const futuros = (_allMatchesData || [])
+          .filter(m => {
+            if (m.estado === 'FINISHED') return false;
+            if (!m.kickoff) return false;
+            const lock = new Date(new Date(m.kickoff).getTime() - 60 * 60 * 1000);
+            return now < lock;
+          })
+          .sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff))
+          .slice(0, 4);
         selPartido.innerHTML = futuros.map(m =>
           `<option value="${m.id}">${escHtml(m.equipo_local)} vs ${escHtml(m.equipo_visitante)}</option>`
         ).join('');
