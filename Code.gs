@@ -112,8 +112,9 @@ function doPost(e) {
       case 'createLiveQuestion':return jsonResponse(createLiveQuestion(data));
       case 'resolveLiveQuestion':return jsonResponse(resolveLiveQuestion(data));
       case 'deleteLiveQuestion':return jsonResponse(deleteLiveQuestion(data));
-      case 'crearReto':         return jsonResponse(crearReto(data));
-      case 'responderReto':     return jsonResponse(responderReto(data));
+      case 'crearReto':              return jsonResponse(crearReto(data));
+      case 'responderReto':          return jsonResponse(responderReto(data));
+      case 'grantManualAchievement': return jsonResponse(grantManualAchievement(data));
       default: return jsonResponse({ error: 'Acción desconocida: ' + data.action });
     }
   } catch (err) {
@@ -1019,15 +1020,29 @@ function getAchievements(pid) {
   if (maxNoWinStreak >= 5)                                earned.push('seleccionador');
 
   const ALL_ACHIEVEMENTS = [
-    { id:'quinielas',     icon:'🎯', name:'El Quinielas',           desc:'Tu primer resultado exacto' },
-    { id:'nostradamus',   icon:'🔮', name:'Nostradamus con Balón',   desc:'5 exactos consecutivos' },
-    { id:'var',           icon:'💀', name:'Peor que el VAR',         desc:'3 partidos seguidos a 0 puntos' },
-    { id:'pulpo',         icon:'🐙', name:'Paul el Pulpo',           desc:'>75% acierto (mín. 10 partidos)' },
-    { id:'nba',           icon:'🏀', name:'¿Esto es la NBA?',        desc:'Exacto en un partido con 4+ goles' },
-    { id:'copypaste',     icon:'😴', name:'Copy-Paste FC',            desc:'Mismo marcador en 8+ partidos' },
-    { id:'hattrick',      icon:'🔥', name:'Hat-Trick de Sofá',       desc:'3 exactos en el mismo día' },
-    { id:'seleccionador', icon:'🤡', name:'Seleccionador Nacional',   desc:'5 partidos seguidos sin acertar el ganador' },
+    { id:'quinielas',        icon:'🎯', name:'El Quinielas',           desc:'Tu primer resultado exacto' },
+    { id:'nostradamus',      icon:'🔮', name:'Nostradamus con Balón',   desc:'5 exactos consecutivos' },
+    { id:'var',              icon:'💀', name:'Peor que el VAR',         desc:'3 partidos seguidos a 0 puntos' },
+    { id:'pulpo',            icon:'🐙', name:'Paul el Pulpo',           desc:'>75% acierto (mín. 10 partidos)' },
+    { id:'nba',              icon:'🏀', name:'¿Esto es la NBA?',        desc:'Exacto en un partido con 4+ goles' },
+    { id:'copypaste',        icon:'😴', name:'Copy-Paste FC',            desc:'Mismo marcador en 8+ partidos' },
+    { id:'hattrick',         icon:'🔥', name:'Hat-Trick de Sofá',       desc:'3 exactos en el mismo día' },
+    { id:'seleccionador',    icon:'🤡', name:'Seleccionador Nacional',   desc:'5 partidos seguidos sin acertar el ganador' },
+    { id:'extincion_lopez',  icon:'💀', name:'Extinción López',          desc:'Has eliminado a toda la familia. Eres una catástrofe natural.' },
+    { id:'fin_dinastia',     icon:'🏰', name:'El fin de la Dinastía',    desc:'Los López cayeron uno a uno. Nadie sobrevivió para contarlo.' },
   ];
+
+  // Logros manuales concedidos por admin
+  const manualSheet = getOrCreateSheet('Logros_Manuales',
+    ['pid', 'achievement_id', 'earned_at', 'granted_by']);
+  const manualRows = manualSheet.getDataRange().getValues();
+  const manualH    = manualRows[0];
+  for (let i = 1; i < manualRows.length; i++) {
+    if (!manualRows[i][0]) continue;
+    if (String(manualRows[i][manualH.indexOf('pid')]) === String(pid)) {
+      earned.push(String(manualRows[i][manualH.indexOf('achievement_id')]));
+    }
+  }
 
   return {
     achievements: ALL_ACHIEVEMENTS.map(a => ({ ...a, locked: !earned.includes(a.id) }))
@@ -1040,14 +1055,16 @@ function getAchievements(pid) {
 
 function getRecentAchievements() {
   const ALL_ACHIEVEMENTS = [
-    { id:'quinielas',     icon:'🎯', name:'El Quinielas',           desc:'Tu primer resultado exacto' },
-    { id:'nostradamus',   icon:'🔮', name:'Nostradamus con Balón',   desc:'5 exactos consecutivos' },
-    { id:'var',           icon:'💀', name:'Peor que el VAR',         desc:'3 partidos seguidos a 0 puntos' },
-    { id:'pulpo',         icon:'🐙', name:'Paul el Pulpo',           desc:'>75% acierto (mín. 10 partidos)' },
-    { id:'nba',           icon:'🏀', name:'¿Esto es la NBA?',        desc:'Exacto en un partido con 4+ goles' },
-    { id:'copypaste',     icon:'😴', name:'Copy-Paste FC',            desc:'Mismo marcador en 8+ partidos' },
-    { id:'hattrick',      icon:'🔥', name:'Hat-Trick de Sofá',       desc:'3 exactos en el mismo día' },
-    { id:'seleccionador', icon:'🤡', name:'Seleccionador Nacional',   desc:'5 partidos seguidos sin acertar el ganador' },
+    { id:'quinielas',        icon:'🎯', name:'El Quinielas',           desc:'Tu primer resultado exacto' },
+    { id:'nostradamus',      icon:'🔮', name:'Nostradamus con Balón',   desc:'5 exactos consecutivos' },
+    { id:'var',              icon:'💀', name:'Peor que el VAR',         desc:'3 partidos seguidos a 0 puntos' },
+    { id:'pulpo',            icon:'🐙', name:'Paul el Pulpo',           desc:'>75% acierto (mín. 10 partidos)' },
+    { id:'nba',              icon:'🏀', name:'¿Esto es la NBA?',        desc:'Exacto en un partido con 4+ goles' },
+    { id:'copypaste',        icon:'😴', name:'Copy-Paste FC',            desc:'Mismo marcador en 8+ partidos' },
+    { id:'hattrick',         icon:'🔥', name:'Hat-Trick de Sofá',       desc:'3 exactos en el mismo día' },
+    { id:'seleccionador',    icon:'🤡', name:'Seleccionador Nacional',   desc:'5 partidos seguidos sin acertar el ganador' },
+    { id:'extincion_lopez',  icon:'💀', name:'Extinción López',          desc:'Has eliminado a toda la familia. Eres una catástrofe natural.' },
+    { id:'fin_dinastia',     icon:'🏰', name:'El fin de la Dinastía',    desc:'Los López cayeron uno a uno. Nadie sobrevivió para contarlo.' },
   ];
 
   const matchRows = getSheet('Partidos').getDataRange().getValues();
@@ -1186,6 +1203,38 @@ function getRecentAchievements() {
   }
 
   // Ordenar por más reciente primero
+  results.sort((a, b) => new Date(b.earned_at) - new Date(a.earned_at));
+
+  // ── Logros manuales recientes ──────────────────────────────
+  const manualSheet = getOrCreateSheet('Logros_Manuales',
+    ['pid', 'achievement_id', 'earned_at', 'granted_by']);
+  const manualRows = manualSheet.getDataRange().getValues();
+  const manualH    = manualRows[0];
+  const partMap    = {};
+  for (let pi = 1; pi < partRows.length; pi++) {
+    if (partRows[pi][0]) partMap[String(partRows[pi][0])] = partRows[pi][1];
+  }
+  for (let i = 1; i < manualRows.length; i++) {
+    if (!manualRows[i][0]) continue;
+    const mPid  = String(manualRows[i][manualH.indexOf('pid')]);
+    const mAid  = String(manualRows[i][manualH.indexOf('achievement_id')]);
+    const mAt   = manualRows[i][manualH.indexOf('earned_at')];
+    const mDate = mAt instanceof Date ? mAt : new Date(mAt);
+    if (isNaN(mDate)) continue;
+    if (mDate < cutoff) continue;
+    const def = ALL_ACHIEVEMENTS.find(a => a.id === mAid);
+    if (!def) continue;
+    results.push({
+      pid:              mPid,
+      nombre:           partMap[mPid] || 'Jugador',
+      achievement_id:   def.id,
+      achievement_icon: def.icon,
+      achievement_name: def.name,
+      achievement_desc: def.desc,
+      earned_at:        mDate.toISOString()
+    });
+  }
+  // Re-ordenar incluyendo manuales
   results.sort((a, b) => new Date(b.earned_at) - new Date(a.earned_at));
 
   return { achievements: results, cutoff: cutoff.toISOString() };
@@ -2429,6 +2478,45 @@ function resolverRetos() {
     // Recalcular puntuaciones afectadas
     if (resueltos > 0) calculateAllPoints();
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  LOGROS MANUALES (concedidos por admin)
+// ─────────────────────────────────────────────────────────────
+
+const MANUAL_ACHIEVEMENTS = ['extincion_lopez', 'fin_dinastia'];
+const ADMIN_PIN_HASH = hashPin('2901');
+
+function grantManualAchievement(data) {
+  const { pid, achievement_id, admin_pin } = data;
+  if (!pid || !achievement_id || !admin_pin) return { error: 'Faltan parámetros' };
+  if (hashPin(String(admin_pin)) !== ADMIN_PIN_HASH) return { error: 'PIN incorrecto' };
+  if (!MANUAL_ACHIEVEMENTS.includes(achievement_id)) return { error: 'Logro no válido' };
+
+  // Verificar que el jugador existe
+  const partSheet = getSheet('Participantes');
+  const partRows  = partSheet.getDataRange().getValues();
+  let playerName  = null;
+  for (let i = 1; i < partRows.length; i++) {
+    if (String(partRows[i][0]) === String(pid)) { playerName = partRows[i][1]; break; }
+  }
+  if (!playerName) return { error: 'Jugador no encontrado' };
+
+  const sheet = getOrCreateSheet('Logros_Manuales',
+    ['pid', 'achievement_id', 'earned_at', 'granted_by']);
+  const rows  = sheet.getDataRange().getValues();
+  const hdr   = rows[0];
+
+  // Comprobar si ya lo tiene
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][hdr.indexOf('pid')]) === String(pid) &&
+        String(rows[i][hdr.indexOf('achievement_id')]) === achievement_id) {
+      return { error: playerName + ' ya tiene este logro' };
+    }
+  }
+
+  sheet.appendRow([pid, achievement_id, new Date().toISOString(), 'admin']);
+  return { success: true, player: playerName, achievement_id };
 }
 
 function testApiConnection() {

@@ -309,6 +309,30 @@
     <button class="create-btn" id="createBtn" onclick="createQuestion()">⚡ Lanzar pregunta</button>
   </div>
 
+  <hr class="divider" />
+
+  <!-- ══ LOGROS MANUALES ══ -->
+  <div class="section-title">
+    🏅 Logros especiales
+    <small>Solo tú puedes concederlos</small>
+  </div>
+
+  <div class="card">
+    <label class="form-label">Jugador</label>
+    <select class="form-select" id="lmJugador">
+      <option value="">Cargando jugadores...</option>
+    </select>
+
+    <label class="form-label" style="margin-top:14px">Logro</label>
+    <select class="form-select" id="lmLogro">
+      <option value="extincion_lopez">💀 Extinción López — Ha eliminado a toda la familia. Es una catástrofe natural.</option>
+      <option value="fin_dinastia">🏰 El fin de la Dinastía — Los López cayeron uno a uno. Nadie sobrevivió para contarlo.</option>
+    </select>
+
+    <button class="create-btn" id="lmBtn" onclick="grantLogro()" style="margin-top:18px">🏅 Conceder logro</button>
+    <div id="lmResult" style="margin-top:12px;font-size:.84rem;min-height:20px"></div>
+  </div>
+
 </div>
 
     <!-- WhatsApp modal -->
@@ -376,6 +400,7 @@
   async function init() {
     loadMatches();
     loadActiveQuestion();
+    loadJugadoresLogros();
     setInterval(loadActiveQuestion, 15000); // refresca respuestas cada 15s
   }
 
@@ -633,6 +658,54 @@
 
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ─── Logros manuales ───
+  async function loadJugadoresLogros() {
+    try {
+      var res = await fetch(SCRIPT_URL + '?action=getRanking');
+      var data = await res.json();
+      var sel = document.getElementById('lmJugador');
+      if (!data.ranking || !data.ranking.length) { sel.innerHTML = '<option value="">Sin jugadores</option>'; return; }
+      sel.innerHTML = '<option value="">— Selecciona jugador —</option>'
+        + data.ranking.map(function(r) {
+            return '<option value="' + escHtml(r.participante_id || r.id || '') + '">' + escHtml(r.nombre) + '</option>';
+          }).join('');
+    } catch(_) {}
+  }
+
+  async function grantLogro() {
+    var pid   = document.getElementById('lmJugador').value;
+    var logro = document.getElementById('lmLogro').value;
+    var res   = document.getElementById('lmResult');
+    if (!pid) { res.style.color = 'var(--red)'; res.textContent = '⚠️ Selecciona un jugador'; return; }
+
+    var btn = document.getElementById('lmBtn');
+    btn.disabled = true;
+    btn.textContent = 'Concediendo...';
+    res.textContent = '';
+
+    try {
+      var r = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'grantManualAchievement', pid: pid, achievement_id: logro, admin_pin: ADMIN_PIN }),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      });
+      var d = await r.json();
+      if (d.success) {
+        res.style.color = 'var(--green)';
+        res.textContent = '✅ Logro "' + logro + '" concedido a ' + escHtml(d.player) + ' correctamente.';
+        toast('🏅 ¡Logro concedido!', 'ok');
+      } else {
+        res.style.color = 'var(--red)';
+        res.textContent = '❌ ' + (d.error || 'Error desconocido');
+      }
+    } catch(_) {
+      res.style.color = 'var(--red)';
+      res.textContent = '❌ Error de conexión';
+    }
+    btn.disabled = false;
+    btn.textContent = '🏅 Conceder logro';
   }
 </script>
 </body>
