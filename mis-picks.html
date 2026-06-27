@@ -303,6 +303,8 @@
         .pred-input { width: 46px; height: 46px; font-size: 1.5rem; }
         .picks-content { padding: 16px; }
         .modal { padding: 28px 20px; }
+        .phase-tabs { padding: 0 8px; }
+        .phase-tab { padding: 14px 10px; font-size: .78rem; flex: 1; text-align: center; }
       }
       #mobileUserRow {
         display: none; border-top: 1px solid rgba(255,255,255,.07);
@@ -365,7 +367,7 @@
         <p id="picksSubtitle">Cargando partidos...</p>
       </div>
       <div class="phase-tabs">
-        <button class="phase-tab active" id="phaseGrupos" onclick="switchPhase('grupos')">⚽ Fase de Grupos</button>
+        <button class="phase-tab active" id="phaseGrupos" onclick="switchPhase('grupos')">⚽ Grupos</button>
         <button class="phase-tab" id="phaseElim" onclick="switchPhase('elim')">⚡ Eliminatorias</button>
         <button class="phase-tab" id="phaseEspeciales" onclick="switchPhase('especiales')">🌟 Especiales</button>
       </div>
