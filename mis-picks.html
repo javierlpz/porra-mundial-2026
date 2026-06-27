@@ -366,9 +366,11 @@
       </div>
       <div class="phase-tabs">
         <button class="phase-tab active" id="phaseGrupos" onclick="switchPhase('grupos')">⚽ Fase de Grupos</button>
-        <button class="phase-tab" id="phaseEspeciales" onclick="switchPhase('especiales')">🌟 Predicciones Especiales</button>
+        <button class="phase-tab" id="phaseElim" onclick="switchPhase('elim')">⚡ Eliminatorias</button>
+        <button class="phase-tab" id="phaseEspeciales" onclick="switchPhase('especiales')">🌟 Especiales</button>
       </div>
       <div class="groups-nav" id="groupsNav"></div>
+      <div class="groups-nav" id="knockoutNav" style="display:none"></div>
       <div class="picks-content">
         <div id="groupContent">
           <div style="text-align:center;padding:40px;color:var(--muted)">
@@ -376,6 +378,7 @@
             <p style="margin-top:12px;font-size:.9rem">Cargando partidos...</p>
           </div>
         </div>
+        <div id="knockoutContent" style="display:none"></div>
         <div id="specialsContent" style="display:none"></div>
       </div>
       <!-- VER PICKS AJENOS -->
@@ -509,6 +512,7 @@
         await Promise.all([loadMatches(), loadMyPreds(), loadMySpecials(), loadMyJoker()]);
         renderGroupsNav();
         renderGroup(currentGroup);
+        renderKnockoutNav();
         renderSpecials();
       }
 
@@ -566,13 +570,19 @@
       // ——— Phase switching ———
       function switchPhase(phase) {
         document.getElementById("phaseGrupos").classList.toggle("active", phase === "grupos");
+        document.getElementById("phaseElim").classList.toggle("active", phase === "elim");
         document.getElementById("phaseEspeciales").classList.toggle("active", phase === "especiales");
         document.getElementById("groupContent").style.display    = phase === "grupos"    ? "block" : "none";
+        document.getElementById("knockoutContent").style.display = phase === "elim"      ? "block" : "none";
         document.getElementById("specialsContent").style.display = phase === "especiales"? "block" : "none";
         document.getElementById("groupsNav").style.display       = phase === "grupos"    ? "flex"  : "none";
+        document.getElementById("knockoutNav").style.display     = phase === "elim"      ? "flex"  : "none";
+        var vp = document.getElementById("verPicksWrap");
+        if (vp) vp.style.display = phase === "grupos" ? "block" : "none";
         document.getElementById("btnSave").textContent  = phase === "especiales" ? "💾 Guardar especiales" : "💾 Guardar picks";
         document.getElementById("btnSave").onclick      = phase === "especiales" ? saveSpecials : savePredictions;
         if (phase === "especiales") renderSpecials();
+        if (phase === "elim") renderKnockout();
       }
 
       // ——— Groups nav ———
@@ -778,7 +788,8 @@
       // ——— Save predictions (FIX v2.1) ———
       async function savePredictions() {
         const preds = [];
-        allMatches.filter(m => m.fase === "GROUP_STAGE").forEach(m => {
+        // Grupos + Eliminatorias: cualquier fase que tenga inputs visibles
+        allMatches.forEach(m => {
           const glEl = document.getElementById(`gl_${m.id}`);
           const gvEl = document.getElementById(`gv_${m.id}`);
           if (!glEl || !gvEl) return;
@@ -918,6 +929,89 @@
           container.style.display = "block";
         } catch(_) {}
         btn.disabled = false; btn.textContent = "👁️ Ver picks de todos — partidos cerrados";
+      }
+
+      // ——— Knockout phase ———
+      const KO_PHASES = [
+        { key: "LAST_32",       label: "🏟️ Dieciséisavos" },
+        { key: "LAST_16",       label: "⚡ Octavos de Final" },
+        { key: "QUARTER_FINALS",label: "🎯 Cuartos de Final" },
+        { key: "SEMI_FINALS",   label: "🔥 Semifinales" },
+        { key: "THIRD_PLACE",   label: "🥉 Tercer Puesto" },
+        { key: "FINAL",         label: "🏆 Final" },
+      ];
+      let currentKOPhase = null;
+
+      function getKOMatches(phaseKey) {
+        return allMatches.filter(m => m.fase === phaseKey);
+      }
+
+      function renderKnockoutNav() {
+        const nav = document.getElementById("knockoutNav");
+        const available = KO_PHASES.filter(p => getKOMatches(p.key).length > 0);
+        if (available.length === 0) {
+          nav.innerHTML = "";
+          return;
+        }
+        if (!currentKOPhase || !available.find(p => p.key === currentKOPhase)) {
+          currentKOPhase = available[0].key;
+        }
+        nav.innerHTML = available.map(p =>
+          `<button class="group-btn ${p.key === currentKOPhase ? "active" : ""}" onclick="switchKOPhase('${p.key}')">${p.label}</button>`
+        ).join("");
+      }
+
+      function switchKOPhase(phaseKey) {
+        currentKOPhase = phaseKey;
+        document.querySelectorAll("#knockoutNav .group-btn").forEach(b =>
+          b.classList.toggle("active", b.getAttribute("onclick").includes(phaseKey))
+        );
+        renderKnockoutMatches();
+      }
+
+      function renderKnockout() {
+        renderKnockoutNav();
+        renderKnockoutMatches();
+      }
+
+      function renderKnockoutMatches() {
+        const el = document.getElementById("knockoutContent");
+        const available = KO_PHASES.filter(p => getKOMatches(p.key).length > 0);
+
+        if (available.length === 0) {
+          el.innerHTML = `<div style="text-align:center;padding:48px;color:var(--muted)">
+            <div style="font-size:2rem;margin-bottom:12px">⏳</div>
+            <p style="font-weight:600;margin-bottom:6px">Las eliminatorias aún no han empezado</p>
+            <p style="font-size:.85rem">Los partidos aparecerán aquí cuando se conozcan los emparejamientos</p>
+          </div>`;
+          document.getElementById("picksSubtitle").textContent = `${user.nombre} · Eliminatorias`;
+          return;
+        }
+
+        const phase = KO_PHASES.find(p => p.key === currentKOPhase);
+        const matches = getKOMatches(currentKOPhase);
+
+        if (matches.length === 0) {
+          el.innerHTML = `<div style="text-align:center;padding:48px;color:var(--muted)">
+            <p>Los partidos de esta ronda aún no están disponibles</p>
+          </div>`;
+          return;
+        }
+
+        const filled = matches.filter(m => myPreds[m.id] !== undefined).length;
+
+        el.innerHTML = `
+          <div class="progress-banner">
+            <span class="progress-text">${phase?.label || ""} · ${filled}/${matches.length} partidos rellenados</span>
+            <span class="progress-count">${filled}/${matches.length}</span>
+          </div>
+          <div class="group-title">${phase?.label || ""}<span class="group-lock-info">🔒 Cierra 1h antes de cada partido</span></div>
+          ${matches.map(matchPredCard).join("")}
+        `;
+
+        const totalKO = KO_PHASES.reduce((acc, p) => acc + getKOMatches(p.key).filter(m => myPreds[m.id] !== undefined).length, 0);
+        document.getElementById("picksSubtitle").textContent =
+          `${user.nombre} · Eliminatorias · ${totalKO} picks guardados`;
       }
 
       // ——— Utils ———
