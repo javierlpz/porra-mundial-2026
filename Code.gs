@@ -91,6 +91,7 @@ function doGet(e) {
       case 'getDuelos':             return jsonResponse(getDuelos());
       case 'getDuelosJugador':      return jsonResponse(getDuelosJugador(e.parameter.pid));
       case 'getRetos':              return jsonResponse(getRetos(e.parameter.pid));
+      case 'getRetosGlobales':      return jsonResponse(getRetosGlobales());
       default: return jsonResponse({ error: 'Acción desconocida: ' + action });
     }
   } catch (err) {
@@ -2381,6 +2382,52 @@ function getRetos(pid) {
 
   historial.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   return { activos, historial, ptsRetos };
+}
+
+/**
+ * Devuelve todos los retos activos (pendientes/aceptados) del grupo.
+ * Sin filtrar por jugador — lo usa el index para mostrar duelos de todos.
+ */
+function getRetosGlobales() {
+  const rSheet = getOrCreateSheet('Retos',
+    ['id','retador_id','retador_nombre','retado_id','retado_nombre','partido_id','estado','pts_retador','pts_retado','resultado','timestamp']);
+  const rRows = rSheet.getDataRange().getValues();
+  const rH    = rRows[0];
+
+  const mSheet = getSheet('Partidos');
+  const mRows  = mSheet.getDataRange().getValues();
+  const mH     = mRows[0];
+  const matchMap = {};
+  for (let i = 1; i < mRows.length; i++) {
+    if (!mRows[i][0]) continue;
+    const m = {};
+    mH.forEach((h, j) => m[h] = mRows[i][j]);
+    matchMap[String(m.id)] = m;
+  }
+
+  const activos = [];
+  for (let i = 1; i < rRows.length; i++) {
+    if (!rRows[i][0]) continue;
+    const estado = String(rRows[i][rH.indexOf('estado')]);
+    if (estado !== 'pendiente' && estado !== 'aceptado') continue;
+
+    const partidoId = String(rRows[i][rH.indexOf('partido_id')]);
+    const match     = matchMap[partidoId] || {};
+
+    activos.push({
+      id:            String(rRows[i][rH.indexOf('id')]),
+      retadorId:     String(rRows[i][rH.indexOf('retador_id')]),
+      retadorNombre: String(rRows[i][rH.indexOf('retador_nombre')]),
+      retadoId:      String(rRows[i][rH.indexOf('retado_id')]),
+      retadoNombre:  String(rRows[i][rH.indexOf('retado_nombre')]),
+      estado,
+      partidoId,
+      partido:       match.equipo_local ? `${match.equipo_local} vs ${match.equipo_visitante}` : '—',
+      timestamp:     String(rRows[i][rH.indexOf('timestamp')])
+    });
+  }
+
+  return { activos };
 }
 
 /**
