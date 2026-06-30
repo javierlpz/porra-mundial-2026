@@ -1627,15 +1627,17 @@
         body.innerHTML = '<p style="color:var(--muted);font-size:.85rem;padding:8px 0">Cargando...</p>';
         overlay.classList.remove('hidden');
         try {
-          const d = await api({ action: 'getGroupConsensus', grupo: m ? m.grupo : '' });
-          const cdata = d.data || {};
-          const entry = cdata[String(matchId)];
-          if (!entry) {
-            body.innerHTML = '<p style="color:var(--muted);font-size:.85rem;padding:8px 0">No hay picks disponibles.</p>';
+          const d = await api({ action: 'getMatchPredictions', mid: matchId });
+          if (d.error) {
+            body.innerHTML = '<p style="color:var(--muted);font-size:.85rem;padding:8px 0">No hay picks disponibles aún.</p>';
             return;
           }
-          const con = entry.consensus;
-          const ps = entry.preds || [];
+          const con = d.consensus;
+          const ps = d.preds || [];
+          if (!con || ps.length === 0) {
+            body.innerHTML = '<p style="color:var(--muted);font-size:.85rem;padding:8px 0">No hay picks disponibles aún.</p>';
+            return;
+          }
           body.innerHTML =
             "<div class='consensus-wrap'><div class='consensus-bar'>"
             + "<div class='cons-local' style='width:" + con.local + "%'>" + (con.local > 8 ? con.local + "%" : "") + "</div>"
