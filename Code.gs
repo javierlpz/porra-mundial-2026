@@ -1309,6 +1309,7 @@ function getFinalWinner(matchRows, mHeaders) {
     const m = {};
     mHeaders.forEach((h, j) => m[h] = matchRows[i][j]);
     if (m.fase !== 'FINAL' || m.estado !== 'FINISHED') continue;
+    if (m.ganador_final) return m.ganador_final;
     const gl = parseInt(m.goles_local), gv = parseInt(m.goles_visitante);
     if (isNaN(gl) || isNaN(gv)) return null;
     return gl > gv ? m.equipo_local : m.equipo_visitante;
@@ -1321,6 +1322,9 @@ function getFinalLoser(matchRows, mHeaders) {
     const m = {};
     mHeaders.forEach((h, j) => m[h] = matchRows[i][j]);
     if (m.fase !== 'FINAL' || m.estado !== 'FINISHED') continue;
+    if (m.ganador_final) {
+      return m.ganador_final === m.equipo_local ? m.equipo_visitante : m.equipo_local;
+    }
     const gl = parseInt(m.goles_local), gv = parseInt(m.goles_visitante);
     if (isNaN(gl) || isNaN(gv)) return null;
     return gl > gv ? m.equipo_visitante : m.equipo_local;
@@ -1854,11 +1858,34 @@ function updatePartidos(apiMatches) {
     const visitN  = m.awayTeam?.shortName || m.awayTeam?.name || 'TBD';
     const localC  = m.homeTeam?.crest || '';
     const visitC  = m.awayTeam?.crest || '';
-    const golesL  = m.score?.fullTime?.home ?? '';
-    const golesV  = m.score?.fullTime?.away ?? '';
+    // Usamos regularTime (resultado a los 90') cuando existe, ya que fullTime
+    // puede incluir prórroga/penaltis en partidos de eliminatoria. Si regularTime
+    // no viene informado (partidos sin prórroga), caemos a fullTime como fallback.
+    const golesL  = m.score?.regularTime?.home ?? m.score?.fullTime?.home ?? '';
+    const golesV  = m.score?.regularTime?.away ?? m.score?.fullTime?.away ?? '';
     const estado  = m.status || 'SCHEDULED';
     const estadio = m.venue || '';
     const jornada = m.matchday || '';
+
+    // ganador_final: equipo que realmente avanza en eliminatoria (tras prórroga/penaltis
+    // si los hubo). NO usamos m.score.winner porque hemos comprobado que es inestable
+    // justo después de terminar el partido (fullTime también lo es). En su lugar,
+    // sumamos regularTime + extraTime + penalties manualmente, que es estable.
+    let ganadorFinal = '';
+    if (fase !== 'GROUP_STAGE' && estado === 'FINISHED') {
+      const rtL = m.score?.regularTime?.home, rtV = m.score?.regularTime?.away;
+      const etL = m.score?.extraTime?.home || 0, etV = m.score?.extraTime?.away || 0;
+      const peL = m.score?.penalties?.home, peV = m.score?.penalties?.away;
+      if (rtL != null && rtV != null) {
+        const totL = rtL + etL, totV = rtV + etV;
+        if (totL > totV) ganadorFinal = localN;
+        else if (totV > totL) ganadorFinal = visitN;
+        else if (peL != null && peV != null) {
+          if (peL > peV) ganadorFinal = localN;
+          else if (peV > peL) ganadorFinal = visitN;
+        }
+      }
+    }
 
     if (existingIds.has(id)) {
       for (let i = 1; i < rows.length; i++) {
@@ -1873,17 +1900,97 @@ function updatePartidos(apiMatches) {
         if (kickoff) set('kickoff', kickoff);
         if (localN !== 'TBD') set('equipo_local',     localN);
         if (visitN !== 'TBD') set('equipo_visitante', visitN);
+        // ganador_final solo lo escribimos si lo hemos podido calcular, para no
+        // borrar un valor ya correcto en caso de que la API venga incompleta
+        if (ganadorFinal) set('ganador_final', ganadorFinal);
         break;
       }
     } else {
       sheet.appendRow([id, kickoff, grupo, fase, localN, visitN, localC, visitC,
-        golesL, golesV, estado, estadio, jornada]);
+        golesL, golesV, estado, estadio, jornada, ganadorFinal]);
     }
   }
 }
 
 // ─────────────────────────────────────────────────────────────
-//  SETUP INICIAL
+//  FIX RETROACTIVO: marcadores de eliminatoria contaminados con
+//  prórroga/penaltis (bug corregido el 30/06/2026). Ejecutar UNA VEZ
+//  a mano desde el editor y luego borrar/ignorar esta función.
+// ─────────────────────────────────────────────────────────────
+
+function fixMarcadoresEliminatoria() {
+  const apiKey = getApiKey();
+  if (!apiKey) { Logger.log('❌ No hay API key.'); return; }
+
+  const sheet   = getSheet('Partidos');
+  const rows    = sheet.getDataRange().getValues();
+  const headers = rows[0];
+  const idCol      = headers.indexOf('id');
+  const faseCol    = headers.indexOf('fase');
+  const estadoCol  = headers.indexOf('estado');
+  const localCol   = headers.indexOf('equipo_local');
+  const visitCol   = headers.indexOf('equipo_visitante');
+
+  let corregidos = 0;
+
+  for (let i = 1; i < rows.length; i++) {
+    const fase   = rows[i][faseCol];
+    const estado = rows[i][estadoCol];
+    if (fase === 'GROUP_STAGE' || estado !== 'FINISHED') continue;
+
+    const id = rows[i][idCol];
+    if (!id) continue;
+
+    const res = UrlFetchApp.fetch(`${API_BASE}/matches/${id}`, {
+      headers: { 'X-Auth-Token': apiKey },
+      muteHttpExceptions: true
+    });
+    if (res.getResponseCode() !== 200) {
+      Logger.log(`⚠️ Error API partido ${id}: ${res.getResponseCode()}`);
+      continue;
+    }
+    const m = JSON.parse(res.getContentText());
+
+    const rtL = m.score?.regularTime?.home, rtV = m.score?.regularTime?.away;
+    const ftL = m.score?.fullTime?.home,    ftV = m.score?.fullTime?.away;
+    const golesL = rtL ?? ftL ?? '';
+    const golesV = rtV ?? ftV ?? '';
+
+    // Recalcular ganador_final igual que en updatePartidos
+    let ganadorFinal = '';
+    const etL = m.score?.extraTime?.home || 0, etV = m.score?.extraTime?.away || 0;
+    const peL = m.score?.penalties?.home, peV = m.score?.penalties?.away;
+    if (rtL != null && rtV != null) {
+      const totL = rtL + etL, totV = rtV + etV;
+      if (totL > totV) ganadorFinal = rows[i][localCol];
+      else if (totV > totL) ganadorFinal = rows[i][visitCol];
+      else if (peL != null && peV != null) {
+        if (peL > peV) ganadorFinal = rows[i][localCol];
+        else if (peV > peL) ganadorFinal = rows[i][visitCol];
+      }
+    }
+
+    const oldGL = rows[i][headers.indexOf('goles_local')];
+    const oldGV = rows[i][headers.indexOf('goles_visitante')];
+
+    if (String(oldGL) !== String(golesL) || String(oldGV) !== String(golesV)) {
+      sheet.getRange(i + 1, headers.indexOf('goles_local') + 1).setValue(golesL);
+      sheet.getRange(i + 1, headers.indexOf('goles_visitante') + 1).setValue(golesV);
+      corregidos++;
+      Logger.log(`✏️ Partido ${id} (${rows[i][localCol]} vs ${rows[i][visitCol]}): ${oldGL}-${oldGV} → ${golesL}-${golesV}`);
+    }
+    if (ganadorFinal) {
+      sheet.getRange(i + 1, headers.indexOf('ganador_final') + 1).setValue(ganadorFinal);
+    }
+
+    Utilities.sleep(300); // evitar rate limit de la API
+  }
+
+  Logger.log(`✅ Fix completado: ${corregidos} partido(s) corregido(s).`);
+  Logger.log('Recalculando puntos de todos los participantes...');
+  calculateAllPoints();
+  Logger.log('✅ Puntos recalculados.');
+}
 // ─────────────────────────────────────────────────────────────
 
 function setup() {
@@ -1892,7 +1999,7 @@ function setup() {
     'Participantes':           ['id','nombre','pin_hash','fecha_registro','activo'],
     'Partidos':                ['id','kickoff','grupo','fase','equipo_local','equipo_visitante',
                                 'crest_local','crest_visitante','goles_local','goles_visitante',
-                                'estado','estadio','jornada'],
+                                'estado','estadio','jornada','ganador_final'],
     'Predicciones':            ['participante_id','partido_id','goles_local','goles_visitante','timestamp'],
     'Predicciones_Especiales': ['participante_id','campeon','finalista','semi1','semi2',
                                 'goleador','sorpresa','equipo_estrella','timestamp'],
