@@ -353,11 +353,11 @@
           <div class="duelo-res-card W"><div class="duelo-res-val" id="dpW">0</div><div class="duelo-res-lbl">Victorias</div></div>
           <div class="duelo-res-card D"><div class="duelo-res-val" id="dpD">0</div><div class="duelo-res-lbl">Empates</div></div>
           <div class="duelo-res-card L"><div class="duelo-res-val" id="dpL">0</div><div class="duelo-res-lbl">Derrotas</div></div>
-          <div class="duelo-res-card" style="border-color:rgba(240,180,41,.3)"><div class="duelo-res-val" id="dpPts" style="color:var(--gold)">0</div><div class="duelo-res-lbl">Puntos retos</div></div>
+          <div class="duelo-res-card" style="border-color:rgba(240,180,41,.3)"><div class="duelo-res-val" id="dpPts" style="color:var(--gold)">0</div><div class="duelo-res-lbl">Puntos duelos</div></div>
         </div>
         <div class="table-wrap">
           <table class="duelos-hist-table">
-            <thead><tr><th>Rival</th><th>Partido</th><th>Pts</th><th>Resultado</th></tr></thead>
+            <thead><tr><th>Rival</th><th>Fecha</th><th>Pts</th><th>Resultado</th></tr></thead>
             <tbody id="duelosHistBody"></tbody>
           </table>
         </div>
@@ -395,7 +395,7 @@
           api({ action:'getProfile',      pid }),
           api({ action:'getAchievements', pid }),
           api({ action:'getHistory',      pid }),
-          api({ action:'getRetos',        pid })
+          api({ action:'getDuelosJugador', pid })
         ]);
         renderProfile(pr);
         renderAchievements(ar.achievements || []);
@@ -572,45 +572,45 @@
       });
     }
 
+    function fmtFechaSolo(fecha) {
+      if (!fecha) return '—';
+      const [y, m, d] = String(fecha).split('-').map(Number);
+      if (!y || !m || !d) return fecha;
+      return new Date(y, m - 1, d).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+    }
+
     function renderRetos(dr) {
       if (!dr || dr.error) return;
-      const { activos = [], historial = [], ptsRetos = 0 } = dr;
-      const total = activos.length + historial.length;
-      if (!total) return;
+      const { historial = [], W = 0, D = 0, L = 0 } = dr;
+      if (!historial.length) return;
 
-      // Contar W/D/L de resueltos
-      let W = 0, D = 0, L = 0;
-      historial.forEach(r => {
-        if (r.miResultado === 'ganado')  W++;
-        else if (r.miResultado === 'empate') D++;
-        else if (r.miResultado === 'perdido') L++;
-      });
+      const ptsDuelos = W - L;
 
       document.getElementById('dpW').textContent  = W;
       document.getElementById('dpD').textContent  = D;
       document.getElementById('dpL').textContent  = L;
-      document.getElementById('dpPts').textContent = (ptsRetos > 0 ? '+' : '') + ptsRetos;
+      document.getElementById('dpPts').textContent = (ptsDuelos > 0 ? '+' : '') + ptsDuelos;
 
       const tbody = document.getElementById('duelosHistBody');
-      const labelRes = { ganado: '🏆 Victoria', perdido: '💀 Derrota', empate: '🤝 Empate', rechazado: 'Rechazado', caducado: 'Caducado' };
-      const badgeClass = { ganado: 'W', perdido: 'L', empate: 'D', rechazado: 'caducado', caducado: 'caducado' };
+      const labelRes   = { W: '🏆 Victoria', L: '💀 Derrota', D: '🤝 Empate' };
+      const badgeClass = { W: 'W', L: 'L', D: 'D' };
 
-      const todos = [...activos, ...historial];
-      if (!todos.length) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">Aún no hay retos</td></tr>';
-      } else {
-        tbody.innerHTML = todos.map(r => {
-          const res = r.miResultado || r.estado;
-          const ptsStr = r.estado === 'resuelto' ? `${r.misPts ?? '—'} – ${r.susPts ?? '—'}` : '—';
-          const badge = `<span class="dh-badge ${badgeClass[res] || 'caducado'}">${labelRes[res] || res}</span>`;
-          return `<tr>
-            <td style="font-weight:600">${escHtml(r.rival)}</td>
-            <td style="font-size:.8rem;color:var(--muted)">${escHtml(r.partido || '—')}</td>
-            <td style="color:var(--muted)">${ptsStr}</td>
-            <td>${badge}</td>
-          </tr>`;
-        }).join('');
-      }
+      // Más recientes primero
+      const ordenado = [...historial].sort((a, b) => b.fecha.localeCompare(a.fecha));
+
+      tbody.innerHTML = ordenado.map(r => {
+        const ptsStr = r.resuelto ? `${r.misPts ?? '—'} – ${r.susPts ?? '—'}` : '—';
+        const badge = r.resuelto
+          ? `<span class="dh-badge ${badgeClass[r.resultado] || ''}">${labelRes[r.resultado] || r.resultado}</span>`
+          : `<span class="dh-badge pendiente">⚔️ En juego</span>`;
+        return `<tr>
+          <td style="font-weight:600">${escHtml(r.rival)}</td>
+          <td style="font-size:.8rem;color:var(--muted)">${fmtFechaSolo(r.fecha)}</td>
+          <td style="color:var(--muted)">${ptsStr}</td>
+          <td>${badge}</td>
+        </tr>`;
+      }).join('');
+
       document.getElementById('duelosPerfilSection').style.display = 'block';
     }
 

@@ -1544,6 +1544,27 @@ function calculatePoints(pid) {
     }
   } catch(e) {}
 
+  // Puntos de duelos automáticos obligatorios (resueltos) — octavos en adelante
+  try {
+    const dSheet = getOrCreateSheet('Duelos',
+      ['fecha','pid_a','nombre_a','pid_b','nombre_b','pts_a','pts_b','resultado_a','resultado_b','resuelto']);
+    const dRows = dSheet.getDataRange().getValues();
+    const dH    = dRows[0];
+    for (let i = 1; i < dRows.length; i++) {
+      if (String(dRows[i][dH.indexOf('resuelto')]) !== 'true') continue;
+      const pidA = String(dRows[i][dH.indexOf('pid_a')]);
+      const pidB = String(dRows[i][dH.indexOf('pid_b')]);
+      if (pidA !== String(pid) && pidB !== String(pid)) continue;
+      const esA = pidA === String(pid);
+      const resultado = esA
+        ? String(dRows[i][dH.indexOf('resultado_a')])
+        : String(dRows[i][dH.indexOf('resultado_b')]);
+      // ganador +1, perdedor -1, empate 0
+      if (resultado === 'W') ptsSpec += 1;
+      else if (resultado === 'L') ptsSpec -= 1;
+    }
+  } catch(e) {}
+
   return { grupos: ptsGrupos, elim: ptsElim, spec: ptsSpec, total: ptsGrupos + ptsElim + ptsSpec };
 }
 
@@ -1834,8 +1855,8 @@ function syncResults() {
     updatePartidos(matches);
     syncScorers();
     calculateAllPoints();
-    // resolveDailyDuels(); // desactivado — reemplazado por sistema de retos manuales
     resolverRetos();
+    resolveDailyDuels();
     Logger.log(`✅ Sync OK — ${matches.length} partidos — ${new Date().toLocaleString('es-ES')}`);
   } catch (err) {
     Logger.log('❌ Sync error: ' + err.message);
@@ -2036,8 +2057,8 @@ function setApiKey(key) {
 function setupTriggers() {
   ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('syncResults').timeBased().everyMinutes(5).create();
-  // generateDailyDuels desactivado — reemplazado por sistema de retos manuales
-  Logger.log('✅ Triggers: syncResults() cada 5 min.');
+  ScriptApp.newTrigger('generateDailyDuels').timeBased().everyDays(1).atHour(0).nearMinute(5).create();
+  Logger.log('✅ Triggers: syncResults() cada 5 min + generateDailyDuels() a medianoche.');
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -2045,14 +2066,16 @@ function setupTriggers() {
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Genera los emparejamientos del día si hay partidos programados.
+ * Genera los emparejamientos OBLIGATORIOS del día si hay partidos de eliminatoria
+ * programados (a partir de octavos de final; la fase de grupos usó el sistema
+ * de retos manuales y no genera duelos automáticos).
  * Se llama automáticamente a medianoche via trigger.
  * Si ya existen duelos para hoy, no hace nada.
  */
 function generateDailyDuels() {
   const today = todayMadrid(); // YYYY-MM-DD hora Madrid
 
-  // Comprobar si hay partidos hoy
+  // Comprobar si hay partidos de ELIMINATORIA hoy (octavos en adelante)
   const mSheet  = getSheet('Partidos');
   const mRows   = mSheet.getDataRange().getValues();
   const mH      = mRows[0];
@@ -2060,10 +2083,12 @@ function generateDailyDuels() {
   for (let i = 1; i < mRows.length; i++) {
     if (!mRows[i][0]) continue;
     const kickoff = String(mRows[i][mH.indexOf('kickoff')]);
+    const fase    = String(mRows[i][mH.indexOf('fase')] || '');
+    if (fase === 'GROUP_STAGE') continue; // grupos no generan duelos automáticos
     if (kickoff && kickoff.slice(0, 10) === today) { hasMatchesToday = true; break; }
   }
   if (!hasMatchesToday) {
-    Logger.log('generateDailyDuels: no hay partidos hoy (' + today + '), sin duelos.');
+    Logger.log('generateDailyDuels: no hay partidos de eliminatoria hoy (' + today + '), sin duelos.');
     return;
   }
 
@@ -2098,22 +2123,32 @@ function generateDailyDuels() {
     [players[i], players[j]] = [players[j], players[i]];
   }
 
-  // Si número impar, el último se empareja con el primero (bye circular)
-  if (players.length % 2 !== 0) players.push(players[0]);
+  // Si número impar, un jugador aleatorio descansa hoy (bye) — nadie se
+  // empareja dos veces el mismo día.
+  let descansa = null;
+  if (players.length % 2 !== 0) {
+    descansa = players.pop();
+  }
 
-  const ts = new Date().toISOString();
   for (let i = 0; i < players.length; i += 2) {
     const a = players[i];
     const b = players[i + 1];
     dSheet.appendRow([today, a.id, a.nombre, b.id, b.nombre, 0, 0, 'pendiente', 'pendiente', false]);
+  }
+
+  if (descansa) {
+    Logger.log('generateDailyDuels: ' + descansa.nombre + ' descansa hoy (bye).');
   }
   Logger.log('generateDailyDuels: ' + (players.length / 2) + ' duelos generados para ' + today);
 }
 
 /**
  * Resuelve los duelos del día calculando puntos obtenidos por cada jugador.
- * Se puede llamar manualmente o añadir a syncResults.
- * Solo resuelve duelos donde resuelto === false y la fecha es <= hoy.
+ * Se llama automáticamente desde syncResults (cada 5 min).
+ * Solo resuelve duelos donde resuelto === false, la fecha es <= hoy, Y ADEMÁS
+ * todos los partidos programados ese día ya están FINISHED — si no, con el
+ * trigger cada 5 min se resolvería en falso (0-0) nada más generarse el duelo,
+ * antes de que se jueguen los partidos.
  */
 function resolveDailyDuels() {
   const dSheet = getOrCreateSheet('Duelos',
@@ -2128,6 +2163,24 @@ function resolveDailyDuels() {
   const mSheet = getSheet('Partidos');
   const mRows  = mSheet.getDataRange().getValues();
   const mH     = mRows[0];
+
+  // Fechas (kickoff) en las que TODOS los partidos ya han terminado.
+  // Un duelo de una fecha solo puede resolverse si esa fecha está aquí.
+  const finishedDates = {};   // fecha → true (todos FINISHED)
+  const seenDates     = {};   // fecha → { total, finished }
+  for (let i = 1; i < mRows.length; i++) {
+    if (!mRows[i][0]) continue;
+    const kickoffRaw = mRows[i][mH.indexOf('kickoff')];
+    if (!kickoffRaw) continue;
+    const fecha = String(kickoffRaw).slice(0, 10);
+    const estado = String(mRows[i][mH.indexOf('estado')]);
+    if (!seenDates[fecha]) seenDates[fecha] = { total: 0, finished: 0 };
+    seenDates[fecha].total++;
+    if (estado === 'FINISHED') seenDates[fecha].finished++;
+  }
+  Object.keys(seenDates).forEach(fecha => {
+    finishedDates[fecha] = seenDates[fecha].finished === seenDates[fecha].total;
+  });
 
   const predSheet = getSheet('Predicciones');
   const predRows  = predSheet.getDataRange().getValues();
@@ -2182,6 +2235,7 @@ function resolveDailyDuels() {
     const rawF = dRows[i][0];
     const fecha = rawF instanceof Date ? Utilities.formatDate(rawF, 'Europe/Madrid', 'yyyy-MM-dd') : String(rawF).slice(0, 10);
     if (fecha > today) continue; // futuro, no tocar
+    if (!finishedDates[fecha]) continue; // aún quedan partidos de ese día sin terminar
 
     const pidA  = String(dRows[i][dH.indexOf('pid_a')]);
     const pidB  = String(dRows[i][dH.indexOf('pid_b')]);
@@ -2351,6 +2405,9 @@ function crearReto(data) {
     }
   }
   if (!match) return { error: 'Partido no encontrado' };
+  if (match.fase && match.fase !== 'GROUP_STAGE') {
+    return { error: 'Los duelos ahora son automáticos y obligatorios a partir de octavos de final. Ya no se puede retar manualmente.' };
+  }
   if (match.estado === 'FINISHED') return { error: 'Ese partido ya ha terminado' };
   if (match.kickoff) {
     const lockTime = new Date(new Date(match.kickoff).getTime() - 60 * 60 * 1000);
@@ -2632,6 +2689,36 @@ function resolverRetos() {
     // Recalcular puntuaciones afectadas
     if (resueltos > 0) calculateAllPoints();
   }
+}
+
+/**
+ * Resetea TODOS los duelos ya resueltos para que resolverRetos() los recalcule
+ * con los marcadores corregidos en Partidos (por si el bug de fullTime/regularTime
+ * afectó a más de uno). Ejecutar manualmente UNA SOLA VEZ tras el fix de
+ * updatePartidos() / fixMarcadoresEliminatoria().
+ */
+function fixDuelosResueltos() {
+  const rSheet = getOrCreateSheet('Retos',
+    ['id','retador_id','retador_nombre','retado_id','retado_nombre','partido_id','estado','pts_retador','pts_retado','resultado','timestamp']);
+  const rRows = rSheet.getDataRange().getValues();
+  const rH    = rRows[0];
+
+  let reseteados = 0;
+  for (let i = 1; i < rRows.length; i++) {
+    if (!rRows[i][0]) continue;
+    if (String(rRows[i][rH.indexOf('estado')]) !== 'resuelto') continue;
+
+    const row = i + 1;
+    rSheet.getRange(row, rH.indexOf('estado')      + 1).setValue('aceptado');
+    rSheet.getRange(row, rH.indexOf('pts_retador') + 1).setValue(0);
+    rSheet.getRange(row, rH.indexOf('pts_retado')  + 1).setValue(0);
+    rSheet.getRange(row, rH.indexOf('resultado')   + 1).setValue('');
+    reseteados++;
+  }
+
+  Logger.log(`fixDuelosResueltos: ${reseteados} duelos reseteados a 'aceptado'.`);
+
+  if (reseteados > 0) resolverRetos();
 }
 
 // ─────────────────────────────────────────────────────────────
