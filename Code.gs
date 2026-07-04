@@ -55,6 +55,20 @@ function todayMadrid() {
   return Utilities.formatDate(new Date(), 'Europe/Madrid', 'yyyy-MM-dd');
 }
 
+/**
+ * Convierte un valor de fecha/hora (Date real o string ISO, tal y como puede
+ * venir de una celda de Sheets) al día de calendario en Madrid, formato
+ * yyyy-MM-dd. Nunca usar String(valor).slice(0,10) para esto: si la celda es
+ * un Date de verdad, String() da "Sat Jul 04 2026..." y la comparación con
+ * un "yyyy-MM-dd" nunca coincide.
+ */
+function fechaMadrid(raw) {
+  if (!raw) return '';
+  const d = raw instanceof Date ? raw : new Date(raw);
+  if (isNaN(d.getTime())) return '';
+  return Utilities.formatDate(d, 'Europe/Madrid', 'yyyy-MM-dd');
+}
+
 function jsonResponse(data) {
   return ContentService
     .createTextOutput(JSON.stringify(data))
@@ -2082,10 +2096,10 @@ function generateDailyDuels() {
   let hasMatchesToday = false;
   for (let i = 1; i < mRows.length; i++) {
     if (!mRows[i][0]) continue;
-    const kickoff = String(mRows[i][mH.indexOf('kickoff')]);
-    const fase    = String(mRows[i][mH.indexOf('fase')] || '');
+    const fase = String(mRows[i][mH.indexOf('fase')] || '');
     if (fase === 'GROUP_STAGE') continue; // grupos no generan duelos automáticos
-    if (kickoff && kickoff.slice(0, 10) === today) { hasMatchesToday = true; break; }
+    const kickoffRaw = mRows[i][mH.indexOf('kickoff')];
+    if (fechaMadrid(kickoffRaw) === today) { hasMatchesToday = true; break; }
   }
   if (!hasMatchesToday) {
     Logger.log('generateDailyDuels: no hay partidos de eliminatoria hoy (' + today + '), sin duelos.');
@@ -2171,8 +2185,8 @@ function resolveDailyDuels() {
   for (let i = 1; i < mRows.length; i++) {
     if (!mRows[i][0]) continue;
     const kickoffRaw = mRows[i][mH.indexOf('kickoff')];
-    if (!kickoffRaw) continue;
-    const fecha = String(kickoffRaw).slice(0, 10);
+    const fecha = fechaMadrid(kickoffRaw);
+    if (!fecha) continue;
     const estado = String(mRows[i][mH.indexOf('estado')]);
     if (!seenDates[fecha]) seenDates[fecha] = { total: 0, finished: 0 };
     seenDates[fecha].total++;
@@ -2689,36 +2703,6 @@ function resolverRetos() {
     // Recalcular puntuaciones afectadas
     if (resueltos > 0) calculateAllPoints();
   }
-}
-
-/**
- * Resetea TODOS los duelos ya resueltos para que resolverRetos() los recalcule
- * con los marcadores corregidos en Partidos (por si el bug de fullTime/regularTime
- * afectó a más de uno). Ejecutar manualmente UNA SOLA VEZ tras el fix de
- * updatePartidos() / fixMarcadoresEliminatoria().
- */
-function fixDuelosResueltos() {
-  const rSheet = getOrCreateSheet('Retos',
-    ['id','retador_id','retador_nombre','retado_id','retado_nombre','partido_id','estado','pts_retador','pts_retado','resultado','timestamp']);
-  const rRows = rSheet.getDataRange().getValues();
-  const rH    = rRows[0];
-
-  let reseteados = 0;
-  for (let i = 1; i < rRows.length; i++) {
-    if (!rRows[i][0]) continue;
-    if (String(rRows[i][rH.indexOf('estado')]) !== 'resuelto') continue;
-
-    const row = i + 1;
-    rSheet.getRange(row, rH.indexOf('estado')      + 1).setValue('aceptado');
-    rSheet.getRange(row, rH.indexOf('pts_retador') + 1).setValue(0);
-    rSheet.getRange(row, rH.indexOf('pts_retado')  + 1).setValue(0);
-    rSheet.getRange(row, rH.indexOf('resultado')   + 1).setValue('');
-    reseteados++;
-  }
-
-  Logger.log(`fixDuelosResueltos: ${reseteados} duelos reseteados a 'aceptado'.`);
-
-  if (reseteados > 0) resolverRetos();
 }
 
 // ─────────────────────────────────────────────────────────────
