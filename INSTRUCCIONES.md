@@ -201,11 +201,13 @@ Activa el joker en cualquier partido antes del cierre. Los puntos se **multiplic
 
 | Predicción | Puntos |
 |---|---|
-| 🏆 Campeón del Mundial | **10 pts** |
-| 🥈 Finalista | **5 pts** |
+| 🏆 Campeón del Mundial (gana la final) | **10 pts** |
+| 🥈 Finalista perdedor (pierde la final) | **5 pts** |
 | 🏅 Semifinalista (×2, cada uno) | **4 pts** |
 | 👟 Máximo Goleador | **8 pts** |
 | 💥 Sorpresa (favorito que cae en grupos) | **6 pts** |
+
+> **Categorías independientes y acumulables.** Si un jugador predice a un equipo como Semifinalista y ese equipo acaba siendo Campeón, cobra ambos: 4 pts + 10 pts. `getSemiFinalists()` devuelve los 4 equipos que jugaron semifinales sin excluir al futuro campeón/subcampeón. La única incompatibilidad es Campeón vs. Finalista perdedor, porque `getFinalWinner()` y `getFinalLoser()` son resultados opuestos del mismo partido (no se puede acertar ambos a la vez para el mismo equipo).
 
 ---
 
