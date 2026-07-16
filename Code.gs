@@ -1896,10 +1896,28 @@ function updatePartidos(apiMatches) {
     // Usamos regularTime (resultado a los 90') cuando existe, ya que fullTime
     // puede incluir prórroga/penaltis en partidos de eliminatoria. Si regularTime
     // no viene informado (partidos sin prórroga), caemos a fullTime como fallback.
-    const golesL  = m.score?.regularTime?.home ?? m.score?.fullTime?.home ?? '';
-    const golesV  = m.score?.regularTime?.away ?? m.score?.fullTime?.away ?? '';
-    const estado  = m.status || 'SCHEDULED';
+    let golesL  = m.score?.regularTime?.home ?? m.score?.fullTime?.home ?? '';
+    let golesV  = m.score?.regularTime?.away ?? m.score?.fullTime?.away ?? '';
+    let estado  = m.status || 'SCHEDULED';
     const estadio = m.venue || '';
+
+    // ── GUARDA ANTI-CONTAMINACIÓN (bug duelos 11-12/07/2026) ──
+    // Justo al acabar un partido de eliminatoria con prórroga/penaltis, la API
+    // puede marcar FINISHED con duration !== 'REGULAR' pero SIN regularTime
+    // todavía. En esa ventana el fallback a fullTime escribiría el marcador
+    // inflado con la prórroga, y resolveDailyDuels congelaría el duelo con
+    // puntos erróneos. Si detectamos esa ventana, tratamos el partido como
+    // IN_PLAY y no escribimos goles: al siguiente ciclo de 5 min regularTime
+    // ya estará estable y todo fluye con el marcador de 90' correcto.
+    if (fase !== 'GROUP_STAGE' && estado === 'FINISHED' &&
+        m.score?.duration && m.score.duration !== 'REGULAR' &&
+        (m.score?.regularTime?.home == null || m.score?.regularTime?.away == null)) {
+      estado = 'IN_PLAY';
+      golesL = '';
+      golesV = '';
+      Logger.log('⏳ Partido ' + id + ' (' + localN + ' vs ' + visitN + '): FINISHED con ' +
+                 m.score.duration + ' pero sin regularTime aún. Difiriendo al siguiente ciclo.');
+    }
     const jornada = m.matchday || '';
 
     // ganador_final: equipo que realmente avanza en eliminatoria (tras prórroga/penaltis
@@ -2182,6 +2200,7 @@ function resolveDailyDuels() {
   // Un duelo de una fecha solo puede resolverse si esa fecha está aquí.
   const finishedDates = {};   // fecha → true (todos FINISHED)
   const seenDates     = {};   // fecha → { total, finished }
+  const lastKickoffMs = {};   // fecha → timestamp (ms) del último kickoff del día
   for (let i = 1; i < mRows.length; i++) {
     if (!mRows[i][0]) continue;
     const kickoffRaw = mRows[i][mH.indexOf('kickoff')];
@@ -2191,6 +2210,10 @@ function resolveDailyDuels() {
     if (!seenDates[fecha]) seenDates[fecha] = { total: 0, finished: 0 };
     seenDates[fecha].total++;
     if (estado === 'FINISHED') seenDates[fecha].finished++;
+    const koMs = (kickoffRaw instanceof Date ? kickoffRaw : new Date(kickoffRaw)).getTime();
+    if (!isNaN(koMs) && (!lastKickoffMs[fecha] || koMs > lastKickoffMs[fecha])) {
+      lastKickoffMs[fecha] = koMs;
+    }
   }
   Object.keys(seenDates).forEach(fecha => {
     finishedDates[fecha] = seenDates[fecha].finished === seenDates[fecha].total;
@@ -2250,6 +2273,18 @@ function resolveDailyDuels() {
     const fecha = rawF instanceof Date ? Utilities.formatDate(rawF, 'Europe/Madrid', 'yyyy-MM-dd') : String(rawF).slice(0, 10);
     if (fecha > today) continue; // futuro, no tocar
     if (!finishedDates[fecha]) continue; // aún quedan partidos de ese día sin terminar
+
+    // ── COLCHÓN DE SEGURIDAD (bug duelos 11-12/07/2026) ──
+    // Aunque todos los partidos figuren FINISHED, esperamos a que hayan pasado
+    // al menos 4 horas desde el último kickoff del día antes de congelar el
+    // duelo. Un partido con prórroga y penaltis dura ~3h; el margen extra da
+    // tiempo a que la API estabilice regularTime y syncResults corrija el
+    // marcador de 90' si llegó contaminado con fullTime.
+    const BUFFER_MS = 4 * 60 * 60 * 1000;
+    if (lastKickoffMs[fecha] && (Date.now() - lastKickoffMs[fecha]) < BUFFER_MS) {
+      Logger.log('resolveDailyDuels: ' + fecha + ' terminado pero dentro del colchón de 4h. Esperando.');
+      continue;
+    }
 
     const pidA  = String(dRows[i][dH.indexOf('pid_a')]);
     const pidB  = String(dRows[i][dH.indexOf('pid_b')]);
