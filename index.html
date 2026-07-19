@@ -1396,6 +1396,10 @@
         const isDone = m.estado === "FINISHED";
         const hasScore = isDone || isLive;
 
+        // Excepción puntual: ocultar "Ver picks de todos" en España vs Argentina
+        const equiposLower = [String(m.equipo_local || "").toLowerCase(), String(m.equipo_visitante || "").toLowerCase()];
+        const ocultarPicks = equiposLower.includes("spain") && equiposLower.includes("argentina");
+
         const statusLabel = isLive
           ? "🔴 En Juego"
           : isDone
@@ -1433,7 +1437,7 @@
           </div>
         </div>
         ${!hasScore ? `<div class="match-time">${fmt(m.kickoff)}</div>` : ""}
-        ${isLive ? `<button class="ver-picks-btn" style="margin-top:10px;width:100%" onclick="openLivePicks('${m.id}', event)">👁️ Ver picks de todos</button>` : ""}
+        ${isLive && !ocultarPicks ? `<button class="ver-picks-btn" style="margin-top:10px;width:100%" onclick="openLivePicks('${m.id}', event)">👁️ Ver picks de todos</button>` : ""}
       </div>`;
       }
 
