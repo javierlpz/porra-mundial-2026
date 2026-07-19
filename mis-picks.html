@@ -1098,5 +1098,170 @@
         } catch(_) {}
       }
     </script>
-  </body>
+  <!-- ═══════════════════════════════════════════════════════════
+     BLOQUEO FINAL — overlay de cierre antes de revelar campeón
+═══════════════════════════════════════════════════════════ -->
+<style>
+  .lock-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(7,9,15,.96); backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px; overflow-y: auto;
+  }
+  .lock-overlay.hidden { display: none; }
+  .lock-modal { max-width: 460px; width: 100%; text-align: center; margin: auto; }
+  .lock-video-wrap {
+    position: relative; border-radius: 16px; overflow: hidden;
+    border: 1px solid var(--border); background: #000;
+    box-shadow: 0 0 60px rgba(240,180,41,.15);
+  }
+  .lock-video-wrap video { width: 100%; display: block; max-height: 55vh; }
+  .lock-sound-btn {
+    position: absolute; bottom: 10px; right: 10px;
+    background: rgba(0,0,0,.65); border: 1px solid rgba(255,255,255,.25);
+    color: #fff; border-radius: 8px; padding: 6px 11px;
+    font-family: inherit; font-size: .78rem; cursor: pointer; transition: all .2s;
+  }
+  .lock-sound-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .lock-title {
+    font-family: "Bebas Neue", cursive; font-size: 1.7rem; letter-spacing: .05em;
+    color: var(--gold); margin-top: 20px;
+  }
+  .lock-sub { color: var(--muted); font-size: .88rem; margin-top: 6px; line-height: 1.5; }
+  .lock-countdown {
+    font-family: "Bebas Neue", cursive; font-size: 1.5rem; letter-spacing: .06em;
+    color: var(--gold2); margin-top: 16px;
+  }
+  .lock-waiting { margin-top: 10px; font-size: .82rem; color: var(--muted); }
+  .lock-waiting strong { color: var(--text); }
+  @media (max-width: 480px) {
+    .lock-title { font-size: 1.4rem; }
+    .lock-countdown { font-size: 1.2rem; }
+  }
+</style>
+
+<div class="lock-overlay hidden" id="lockOverlay">
+  <div class="lock-modal">
+    <div class="lock-video-wrap">
+      <video id="lockVideo" src="assets/bloqueo.mp4" autoplay loop muted playsinline></video>
+      <button class="lock-sound-btn" id="lockSoundBtn" onclick="toggleLockSound()">🔇 Sonido</button>
+    </div>
+    <div class="lock-title">🔒 La Porra ha echado el cierre</div>
+    <div class="lock-sub">Los puntos ya están contando. El campeón se revela mañana — paciencia.</div>
+    <div class="lock-countdown" id="lockCountdown"></div>
+    <div class="lock-waiting" id="lockWaiting"></div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var LOCK_POLL_MS = 20000; // 20s
+    var _lockPinged = false;
+    var _lockCountdownInt = null;
+
+    function getPid() {
+      try {
+        var raw = localStorage.getItem('porra2026_user');
+        if (raw) {
+          var u = JSON.parse(raw);
+          if (u && u.id) return String(u.id);
+        }
+      } catch (_) {}
+      var anonKey = 'porra2026_anon_id';
+      var anon = localStorage.getItem(anonKey);
+      if (!anon) {
+        anon = 'anon_' + Math.random().toString(36).slice(2, 10);
+        localStorage.setItem(anonKey, anon);
+      }
+      return anon;
+    }
+
+    async function checkLockStatus() {
+      try {
+        var res = await fetch(SCRIPT_URL + '?action=getLockStatus');
+        var data = await res.json();
+        if (data && data.activo) showLockOverlay(data);
+        else hideLockOverlay();
+      } catch (_) {}
+    }
+
+    function showLockOverlay(data) {
+      var ov = document.getElementById('lockOverlay');
+      if (!ov) return;
+      var wasHidden = ov.classList.contains('hidden');
+      ov.classList.remove('hidden');
+      document.documentElement.style.overflow = 'hidden';
+
+      if (wasHidden) {
+        var vid = document.getElementById('lockVideo');
+        if (vid) vid.play().catch(function () {});
+      }
+      if (!_lockPinged) { _lockPinged = true; pingWaiting(); }
+
+      updateWaitingCount(data.waitingCount);
+      startLockCountdown(data.horaDesbloqueo);
+    }
+
+    function hideLockOverlay() {
+      var ov = document.getElementById('lockOverlay');
+      if (!ov) return;
+      ov.classList.add('hidden');
+      document.documentElement.style.overflow = '';
+      clearInterval(_lockCountdownInt);
+    }
+
+    function updateWaitingCount(n) {
+      var el = document.getElementById('lockWaiting');
+      if (!el) return;
+      el.innerHTML = (n && n > 0)
+        ? '👀 <strong>' + n + '</strong> persona' + (n !== 1 ? 's' : '') + ' esperando ahora mismo'
+        : '';
+    }
+
+    async function pingWaiting() {
+      try {
+        var res = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'pingWaiting', pid: getPid() })
+        });
+        var data = await res.json();
+        if (data && typeof data.waitingCount === 'number') updateWaitingCount(data.waitingCount);
+      } catch (_) {}
+    }
+
+    function startLockCountdown(horaDesbloqueo) {
+      clearInterval(_lockCountdownInt);
+      var el = document.getElementById('lockCountdown');
+      if (!el) return;
+      if (!horaDesbloqueo) { el.textContent = ''; return; }
+      var end = new Date(horaDesbloqueo).getTime();
+
+      function tick() {
+        var diff = Math.floor((end - Date.now()) / 1000);
+        if (diff <= 0) { el.textContent = '⏳ Quedan los últimos flecos...'; return; }
+        var h = Math.floor(diff / 3600);
+        var m = Math.floor((diff % 3600) / 60);
+        var s = diff % 60;
+        el.textContent = '⏳ ' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+      }
+      tick();
+      _lockCountdownInt = setInterval(tick, 1000);
+    }
+
+    window.toggleLockSound = function () {
+      var vid = document.getElementById('lockVideo');
+      var btn = document.getElementById('lockSoundBtn');
+      if (!vid || !btn) return;
+      vid.muted = !vid.muted;
+      if (!vid.muted) vid.play().catch(function () {});
+      btn.textContent = vid.muted ? '🔇 Sonido' : '🔊 Silenciar';
+    };
+
+    checkLockStatus();
+    setInterval(checkLockStatus, LOCK_POLL_MS);
+  })();
+</script>
+
+</body>
 </html>

@@ -106,6 +106,7 @@ function doGet(e) {
       case 'getDuelosJugador':      return jsonResponse(getDuelosJugador(e.parameter.pid));
       case 'getRetos':              return jsonResponse(getRetos(e.parameter.pid));
       case 'getRetosGlobales':      return jsonResponse(getRetosGlobales());
+      case 'getLockStatus':         return jsonResponse(getLockStatus());
       default: return jsonResponse({ error: 'Acción desconocida: ' + action });
     }
   } catch (err) {
@@ -130,6 +131,8 @@ function doPost(e) {
       case 'crearReto':              return jsonResponse(crearReto(data));
       case 'responderReto':          return jsonResponse(responderReto(data));
       case 'grantManualAchievement': return jsonResponse(grantManualAchievement(data));
+      case 'pingWaiting':             return jsonResponse(pingWaiting(data));
+      case 'setLockStatus':           return jsonResponse(setLockStatus(data));
       default: return jsonResponse({ error: 'Acción desconocida: ' + data.action });
     }
   } catch (err) {
@@ -2090,7 +2093,140 @@ function setupTriggers() {
   ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('syncResults').timeBased().everyMinutes(5).create();
   ScriptApp.newTrigger('generateDailyDuels').timeBased().everyDays(1).atHour(0).nearMinute(5).create();
-  Logger.log('✅ Triggers: syncResults() cada 5 min + generateDailyDuels() a medianoche.');
+  ScriptApp.newTrigger('checkAutoLock').timeBased().everyMinutes(5).create();
+  Logger.log('✅ Triggers: syncResults() cada 5 min + generateDailyDuels() a medianoche + checkAutoLock() cada 5 min.');
+}
+
+// ─────────────────────────────────────────────────────────────
+//  BLOQUEO FINAL — pantalla de "cierre" antes de revelar campeón
+// ─────────────────────────────────────────────────────────────
+//  Usa PropertiesService (no Sheets) porque son solo 3 flags de
+//  singleton que se leen en cada carga de página; nada que auditar
+//  ni cruzar con otras hojas.
+//
+//  BLOQUEO_ACTIVO           'true' | 'false'
+//  BLOQUEO_HORA_DESBLOQUEO  ISO string — hora objetivo mostrada en el
+//                           countdown (informativa; el desbloqueo real
+//                           siempre lo dispara el admin a mano)
+//  BLOQUEO_AUTO_DONE        'true' una vez que el trigger automático (o el
+//                           admin) ha activado el bloqueo una vez, para
+//                           que no se reactive solo si luego se desactiva
+// ─────────────────────────────────────────────────────────────
+
+const ADMIN_PIN_BLOQUEO = '2901';
+const BLOQUEO_HORA_ACTIVACION = '22:10'; // hora Madrid, formato HH:mm
+
+function getLockStatus() {
+  const props = PropertiesService.getScriptProperties();
+  return {
+    activo: props.getProperty('BLOQUEO_ACTIVO') === 'true',
+    horaDesbloqueo: props.getProperty('BLOQUEO_HORA_DESBLOQUEO') || null,
+    waitingCount: getWaitingCount()
+  };
+}
+
+/**
+ * Fija la hora "objetivo" de desbloqueo mostrada en el countdown:
+ * las 18:00 (hora Madrid) del día siguiente al momento de activación.
+ * Es solo informativa — el desbloqueo real lo hace el admin a mano.
+ */
+function calcularHoraObjetivoDesbloqueo() {
+  const ahora = new Date();
+  const mananaMadrid = new Date(ahora.getTime());
+  mananaMadrid.setDate(mananaMadrid.getDate() + 1);
+  const mananaStr = Utilities.formatDate(mananaMadrid, 'Europe/Madrid', 'yyyy-MM-dd');
+  const fecha = Utilities.parseDate(mananaStr + ' 18:00:00', 'Europe/Madrid', 'yyyy-MM-dd HH:mm:ss');
+  return fecha.toISOString();
+}
+
+/**
+ * Activa/desactiva el bloqueo manualmente desde admin.html (requiere PIN).
+ * data: { activo: true|false, pin: '2901' }
+ */
+function setLockStatus(data) {
+  if (String(data.pin) !== ADMIN_PIN_BLOQUEO) return { error: 'PIN incorrecto' };
+  const props = PropertiesService.getScriptProperties();
+
+  if (data.activo) {
+    props.setProperty('BLOQUEO_ACTIVO', 'true');
+    if (!props.getProperty('BLOQUEO_HORA_DESBLOQUEO')) {
+      props.setProperty('BLOQUEO_HORA_DESBLOQUEO', calcularHoraObjetivoDesbloqueo());
+    }
+    props.setProperty('BLOQUEO_AUTO_DONE', 'true'); // evita que el trigger lo reactive luego
+  } else {
+    props.setProperty('BLOQUEO_ACTIVO', 'false');
+  }
+  return { success: true, activo: data.activo === true };
+}
+
+/**
+ * Trigger horario (cada 5 min, ver setupTriggers). Activa el bloqueo
+ * automáticamente una sola vez, a las 22:10 hora de Madrid.
+ * Si el admin ya lo activó/desactivó a mano antes, no hace nada
+ * (BLOQUEO_AUTO_DONE evita una doble activación).
+ */
+function checkAutoLock() {
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('BLOQUEO_AUTO_DONE') === 'true') return;
+
+  const horaActual = Utilities.formatDate(new Date(), 'Europe/Madrid', 'HH:mm');
+  if (horaActual >= BLOQUEO_HORA_ACTIVACION) {
+    props.setProperty('BLOQUEO_ACTIVO', 'true');
+    props.setProperty('BLOQUEO_HORA_DESBLOQUEO', calcularHoraObjetivoDesbloqueo());
+    props.setProperty('BLOQUEO_AUTO_DONE', 'true');
+    Logger.log('🔒 Bloqueo automático activado a las ' + horaActual + ' (Madrid).');
+  }
+}
+
+/**
+ * Contador de "gente esperando": cada participante manda un ping único
+ * cuando le aparece el overlay de bloqueo. Se guarda en CacheService
+ * (no en Sheets) porque es un dato efímero de una ventana de ~10 min.
+ */
+function getWaitingCount() {
+  const list = leerListaEspera_();
+  return list.length;
+}
+
+function pingWaiting(data) {
+  const pid = String(data.pid || '').trim();
+  if (!pid) return { success: false, waitingCount: getWaitingCount() };
+
+  const cache = CacheService.getScriptCache();
+  let list = leerListaEspera_();
+
+  const idx = list.findIndex(it => it.pid === pid);
+  const now = Date.now();
+  if (idx >= 0) list[idx].ts = now; else list.push({ pid: pid, ts: now });
+
+  cache.put('BLOQUEO_WAITING_LIST', JSON.stringify(list), 1800); // TTL caché 30 min
+  return { success: true, waitingCount: list.length };
+}
+
+// Lee la lista de pings y descarta los de hace más de 10 minutos.
+function leerListaEspera_() {
+  const cache = CacheService.getScriptCache();
+  const raw = cache.get('BLOQUEO_WAITING_LIST');
+  if (!raw) return [];
+  let list;
+  try { list = JSON.parse(raw); } catch (e) { return []; }
+  const WINDOW_MS = 10 * 60 * 1000;
+  const now = Date.now();
+  return list.filter(it => (now - it.ts) < WINDOW_MS);
+}
+
+/**
+ * Resetea todos los flags de bloqueo. Ejecutar a mano desde el editor
+ * de Apps Script si hay que repetir la secuencia de cierre (pruebas,
+ * o un futuro torneo).
+ */
+function resetBloqueo() {
+  const props = PropertiesService.getScriptProperties();
+  props.deleteProperty('BLOQUEO_ACTIVO');
+  props.deleteProperty('BLOQUEO_HORA_DESBLOQUEO');
+  props.deleteProperty('BLOQUEO_AUTO_DONE');
+  CacheService.getScriptCache().remove('BLOQUEO_WAITING_LIST');
+  Logger.log('✅ Bloqueo reseteado.');
 }
 
 // ─────────────────────────────────────────────────────────────

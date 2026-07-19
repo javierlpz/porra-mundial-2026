@@ -250,6 +250,18 @@
 <!-- Main panel (hidden until auth) -->
 <div class="page" id="mainPanel" style="display:none">
 
+  <!-- ══ BLOQUEO FINAL ══ -->
+  <div class="section-title">
+    🔒 Bloqueo final
+    <button class="refresh-btn" onclick="loadLockStatus()">↻ Actualizar</button>
+  </div>
+
+  <div class="card" id="lockCard">
+    <div style="color:var(--muted);font-size:.88rem">Cargando...</div>
+  </div>
+
+  <hr class="divider" />
+
   <!-- ══ PREGUNTA ACTIVA ══ -->
   <div class="section-title">
     ⚡ Estado actual
@@ -401,8 +413,54 @@
     loadMatches();
     loadActiveQuestion();
     loadJugadoresLogros();
+    loadLockStatus();
     setInterval(loadActiveQuestion, 15000); // refresca respuestas cada 15s
     setInterval(loadMatches, 20000); // refresca partidos en juego cada 20s
+    setInterval(loadLockStatus, 20000); // refresca estado del bloqueo cada 20s
+  }
+
+  // ─── Bloqueo final ───
+  async function loadLockStatus() {
+    var card = document.getElementById('lockCard');
+    try {
+      var data = await api({ action: 'getLockStatus' });
+      var estadoHtml = data.activo
+        ? '<span style="color:var(--red);font-weight:700">🔒 ACTIVO</span> — los usuarios están viendo la pantalla de cierre'
+        : '<span style="color:var(--green);font-weight:700">🔓 Desactivado</span> — la app funciona con normalidad';
+
+      var horaHtml = data.horaDesbloqueo
+        ? '<div style="font-size:.82rem;color:var(--muted);margin-top:6px">Hora objetivo mostrada a los usuarios: ' +
+          new Date(data.horaDesbloqueo).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' }) + '</div>'
+        : '';
+
+      var esperandoHtml = '<div style="font-size:.82rem;color:var(--muted);margin-top:4px">👀 ' +
+        (data.waitingCount || 0) + ' esperando ahora mismo</div>';
+
+      card.innerHTML =
+        '<div style="font-size:.92rem">' + estadoHtml + '</div>' +
+        horaHtml + esperandoHtml +
+        '<div style="display:flex;gap:10px;margin-top:16px">' +
+          '<button class="create-btn" style="background:var(--red);color:#fff" onclick="toggleLock(true)" ' + (data.activo ? 'disabled' : '') + '>🔒 Activar ahora</button>' +
+          '<button class="create-btn" style="background:var(--green)" onclick="toggleLock(false)" ' + (!data.activo ? 'disabled' : '') + '>🔓 Desactivar</button>' +
+        '</div>';
+    } catch (e) {
+      card.innerHTML = '<div style="color:var(--red);font-size:.84rem">Error cargando estado.</div>';
+    }
+  }
+
+  async function toggleLock(activo) {
+    var msg = activo
+      ? '¿Activar el bloqueo ya mismo? Todos los usuarios verán la pantalla de cierre inmediatamente.'
+      : '¿Desactivar el bloqueo? Los usuarios recuperarán el acceso normal a la app ahora mismo.';
+    if (!confirm(msg)) return;
+    try {
+      var res = await post({ action: 'setLockStatus', activo: activo, pin: ADMIN_PIN });
+      if (res.error) { toast('❌ ' + res.error, 'err'); return; }
+      toast(activo ? '🔒 Bloqueo activado' : '🔓 Bloqueo desactivado', 'ok');
+      loadLockStatus();
+    } catch (e) {
+      toast('❌ Error de conexión', 'err');
+    }
   }
 
   // ─── Cargar partidos en juego para el select ───
