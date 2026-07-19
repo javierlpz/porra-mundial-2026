@@ -80,6 +80,45 @@
     .lock-title { font-size: 1.4rem; }
     .lock-countdown { font-size: 1.2rem; }
   }
+
+  /* ═══ Podio + banner del campeón (idéntico al de producción) ═══ */
+  @keyframes confettiFall {
+    to { transform: translateY(105vh) rotate(360deg); opacity: .15; }
+  }
+  .podium-overlay {
+    position: fixed; inset: 0; z-index: 9998;
+    background: rgba(7,9,15,.97); backdrop-filter: blur(10px);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 20px; text-align: center;
+  }
+  .podium-overlay.hidden { display: none; }
+  .podium-caption {
+    font-family: "Bebas Neue", cursive; font-size: 1.5rem; letter-spacing: .05em;
+    color: var(--gold2); margin-bottom: 36px; min-height: 1.8rem;
+  }
+  .podium-stage { display: flex; align-items: flex-end; gap: 16px; }
+  .podium-slot { text-align: center; opacity: 0; transform: translateY(24px); transition: all .7s ease; }
+  .podium-slot.show { opacity: 1; transform: translateY(0); }
+  .podium-slot .medal { font-size: 2.1rem; }
+  .podium-slot .bar { width: 92px; border-radius: 10px 10px 0 0; background: var(--surface); border: 1px solid var(--border); margin-top: 8px; }
+  .podium-slot.p2 { order: 1; } .podium-slot.p1 { order: 2; } .podium-slot.p3 { order: 3; }
+  .podium-slot.p3 .bar { height: 64px; border-color: #d97706; }
+  .podium-slot.p2 .bar { height: 96px; border-color: #cbd5e1; }
+  .podium-slot.p1 .bar { height: 136px; border-color: var(--gold); box-shadow: 0 0 40px rgba(240,180,41,.35); }
+  .podium-name { font-family: "Bebas Neue", cursive; font-size: 1.05rem; letter-spacing: .04em; margin-top: 10px; max-width: 100px; overflow-wrap: break-word; }
+  .podium-pts { font-size: .76rem; color: var(--muted); margin-top: 2px; }
+  .champion-banner {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+    z-index: 500; width: min(94vw, 460px);
+    background: var(--card); border: 1px solid rgba(240,180,41,.4);
+    border-radius: 16px; padding: 20px 22px; text-align: center;
+    box-shadow: 0 10px 44px rgba(0,0,0,.5);
+  }
+  .champion-banner.hidden { display: none; }
+  .champion-trophy { font-size: 2rem; }
+  .champion-name { font-family: "Bebas Neue", cursive; font-size: 1.6rem; letter-spacing: .05em; color: var(--gold); margin-top: 4px; }
+  .champion-msg { font-size: .88rem; color: var(--text); line-height: 1.55; margin-top: 10px; }
+  .champion-msg strong { color: var(--gold2); }
 </style>
 </head>
 <body>
@@ -91,6 +130,8 @@
   <div class="test-controls">
     <button id="btnModePreview" class="active" onclick="setMode('preview')">👁️ Ver overlay (fijo)</button>
     <button id="btnModeReal" onclick="setMode('real')">🔌 Probar contra el backend real</button>
+    <button id="btnModePodio" onclick="setMode('podio')">🏆 Podio y campeón (datos reales)</button>
+    <button onclick="resetPodioTest()">🔁 Reiniciar prueba del podio</button>
   </div>
   <div id="modeInfo">
     Modo actual: <strong>Ver overlay (fijo)</strong> — se muestra el overlay directamente con un countdown de ejemplo, sin tocar el flag real de bloqueo. Así puedes revisar el vídeo, el texto y los estilos.
@@ -110,6 +151,23 @@
       <div class="lock-waiting" id="lockWaiting"></div>
       <button class="lock-close-test" onclick="hideLockOverlayTest()">✕ Cerrar (solo en esta página de prueba)</button>
     </div>
+  </div>
+
+  <!-- ═══ Podio en suspense ═══ -->
+  <div class="podium-overlay hidden" id="podiumOverlay">
+    <div class="podium-caption" id="podiumCaption"></div>
+    <div class="podium-stage">
+      <div class="podium-slot p2" id="slotP2"><div class="medal">🥈</div><div class="podium-name"></div><div class="podium-pts"></div><div class="bar"></div></div>
+      <div class="podium-slot p1" id="slotP1"><div class="medal">🥇</div><div class="podium-name"></div><div class="podium-pts"></div><div class="bar"></div></div>
+      <div class="podium-slot p3" id="slotP3"><div class="medal">🥉</div><div class="podium-name"></div><div class="podium-pts"></div><div class="bar"></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ Banner fijo del campeón ═══ -->
+  <div class="champion-banner hidden" id="championBanner">
+    <div class="champion-trophy">🏆</div>
+    <div class="champion-name" id="championName">—</div>
+    <div class="champion-msg" id="championMsg"></div>
   </div>
 
 <script>
@@ -193,6 +251,9 @@
     clearInterval(_countdownInt);
     document.getElementById('btnModePreview').classList.toggle('active', mode === 'preview');
     document.getElementById('btnModeReal').classList.toggle('active', mode === 'real');
+    document.getElementById('btnModePodio').classList.toggle('active', mode === 'podio');
+    document.getElementById('podiumOverlay').classList.add('hidden');
+    document.getElementById('championBanner').classList.add('hidden');
 
     if (mode === 'preview') {
       document.getElementById('lockOverlay').classList.remove('hidden');
@@ -201,15 +262,134 @@
       startFakeCountdown();
       var vid = document.getElementById('lockVideo');
       if (vid) vid.play().catch(function(){});
-    } else {
+    } else if (mode === 'real') {
       document.getElementById('lockOverlay').classList.add('hidden');
       document.getElementById('modeInfo').textContent = 'Modo actual: Backend real — consultando estado...';
       checkRealLockStatus();
       _realPollInt = setInterval(checkRealLockStatus, 15000);
+    } else if (mode === 'podio') {
+      document.getElementById('lockOverlay').classList.add('hidden');
+      runPodioTest();
     }
   }
 
   setMode('preview');
+
+  // ═══════════════════════════════════════════════════════════
+  //  MODO "Podio y campeón" — usa datos REALES de getRanking /
+  //  getProfile (solo lectura, no escribe nada en el backend).
+  //  Usa su PROPIA clave de localStorage (independiente de la de
+  //  producción) para poder demostrar el "se ve una vez y ya no
+  //  más" sin arriesgarse a tocar el flag real de la porra.
+  // ═══════════════════════════════════════════════════════════
+  var TEST_SEEN_KEY = 'porra2026_TEST_seen_podio';
+
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  async function fetchChampionDataTest() {
+    var rk = await (await fetch(SCRIPT_URL + '?action=getRanking')).json();
+    var top3 = (rk.ranking || []).slice(0, 3);
+    var champ = top3[0];
+    if (!champ) return null;
+    var prof = await (await fetch(SCRIPT_URL + '?action=getProfile&pid=' + encodeURIComponent(champ.participante_id))).json();
+    return { top3: top3, champion: champ, profile: prof };
+  }
+
+  function renderSlotTest(slotId, entry) {
+    var el = document.getElementById(slotId);
+    if (!el) return;
+    if (!entry) { el.style.visibility = 'hidden'; return; }
+    el.style.visibility = 'visible';
+    el.querySelector('.podium-name').textContent = entry.nombre || '—';
+    el.querySelector('.podium-pts').textContent   = (entry.total || 0) + ' pts';
+  }
+
+  async function playPodiumTest(top3) {
+    var ov = document.getElementById('podiumOverlay');
+    var caption = document.getElementById('podiumCaption');
+    ['slotP3','slotP2','slotP1'].forEach(function(id){ document.getElementById(id).classList.remove('show'); });
+    renderSlotTest('slotP3', top3[2]);
+    renderSlotTest('slotP2', top3[1]);
+    renderSlotTest('slotP1', top3[0]);
+    ov.classList.remove('hidden');
+
+    caption.textContent = '🥉 Bronce para...';
+    await wait(900);
+    document.getElementById('slotP3').classList.add('show');
+    await wait(2100);
+    caption.textContent = '🥈 Plata para...';
+    document.getElementById('slotP2').classList.add('show');
+    await wait(2100);
+    caption.textContent = '🥇 Y el Campeón absoluto de la Porra Mundial 2026 es...';
+    await wait(1400);
+    document.getElementById('slotP1').classList.add('show');
+    launchConfettiTest(80);
+    await wait(3600);
+    ov.classList.add('hidden');
+  }
+
+  function buildChampionMessageTest(champ, stats) {
+    var total = champ.total || 0, exactos = stats.exactos || 0, racha = stats.mejorRacha || 0;
+    return '🏆 Con <strong>' + total + ' puntos</strong>, ' + exactos +
+      ' marcadores clavados al milímetro y una racha de ' + racha +
+      ' aciertos que ha hecho llorar a más de uno, <strong>' + (champ.nombre || 'este crack') +
+      '</strong> se corona Campeón/a Absoluto/a de la Porra Mundial 2026. ' +
+      'Que le paguen ya las cervezas — se las ha ganado a pulso.';
+  }
+
+  function showChampionBannerTest(champData) {
+    if (!champData || !champData.champion) return;
+    var champ = champData.champion;
+    var stats = (champData.profile && champData.profile.stats) || {};
+    document.getElementById('championName').textContent = champ.nombre || '—';
+    document.getElementById('championMsg').innerHTML = buildChampionMessageTest(champ, stats);
+    document.getElementById('championBanner').classList.remove('hidden');
+  }
+
+  function launchConfettiTest(n) {
+    var colors = ['#f0b429', '#ffd76e', '#22c55e', '#ef4444', '#f1f5f9'];
+    var layer = document.createElement('div');
+    layer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:10000;overflow:hidden;';
+    for (var i = 0; i < n; i++) {
+      var piece = document.createElement('span');
+      var left = Math.random()*100, dur = 2.5+Math.random()*2, delay = Math.random()*0.6;
+      var size = 7+Math.random()*8, color = colors[Math.floor(Math.random()*colors.length)];
+      piece.style.cssText = 'position:absolute;top:-20px;left:'+left+'vw;width:'+size+'px;height:'+(size*0.4)+'px;'+
+        'background:'+color+';opacity:.9;border-radius:2px;'+
+        'animation:confettiFall '+dur+'s linear '+delay+'s forwards;'+
+        'transform:rotate('+(Math.random()*360)+'deg);';
+      layer.appendChild(piece);
+    }
+    document.body.appendChild(layer);
+    setTimeout(function(){ layer.remove(); }, 5200);
+  }
+
+  async function runPodioTest() {
+    var seen = localStorage.getItem(TEST_SEEN_KEY);
+    var info = document.getElementById('modeInfo');
+
+    var champData = await fetchChampionDataTest();
+    if (!champData || !champData.champion) {
+      info.textContent = 'Modo actual: Podio y campeón — todavía no hay ranking con datos suficientes.';
+      return;
+    }
+
+    if (!seen) {
+      info.innerHTML = 'Modo actual: <strong>Podio y campeón</strong> — primera vez que este navegador lo ve: reproduciendo la secuencia completa (como le pasará a cada usuario real, aunque entre horas después del desbloqueo).';
+      localStorage.setItem(TEST_SEEN_KEY, '1');
+      await playPodiumTest(champData.top3);
+      showChampionBannerTest(champData);
+    } else {
+      info.innerHTML = 'Modo actual: <strong>Podio y campeón</strong> — este navegador ya lo vio antes, así que ahora solo aparece el banner fijo, sin repetir la animación. Dale a "🔁 Reiniciar prueba" para volver a verla desde cero.';
+      showChampionBannerTest(champData);
+    }
+  }
+
+  function resetPodioTest() {
+    localStorage.removeItem(TEST_SEEN_KEY);
+    if (_mode === 'podio') runPodioTest();
+    else alert('Prueba reiniciada. Cambia al modo "🏆 Podio y campeón" para verla de nuevo desde cero.');
+  }
 </script>
 </body>
 </html>

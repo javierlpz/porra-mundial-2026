@@ -133,6 +133,7 @@ function doPost(e) {
       case 'grantManualAchievement': return jsonResponse(grantManualAchievement(data));
       case 'pingWaiting':             return jsonResponse(pingWaiting(data));
       case 'setLockStatus':           return jsonResponse(setLockStatus(data));
+      case 'retirarCierre':           return jsonResponse(retirarCierre(data));
       default: return jsonResponse({ error: 'Acción desconocida: ' + data.action });
     }
   } catch (err) {
@@ -2121,7 +2122,9 @@ function getLockStatus() {
   return {
     activo: props.getProperty('BLOQUEO_ACTIVO') === 'true',
     horaDesbloqueo: props.getProperty('BLOQUEO_HORA_DESBLOQUEO') || null,
-    waitingCount: getWaitingCount()
+    waitingCount: getWaitingCount(),
+    porraFinalizada: props.getProperty('PORRA_FINALIZADA') === 'true',
+    revealTriggeredAt: props.getProperty('REVEAL_TRIGGERED_AT') || null
   };
 }
 
@@ -2142,6 +2145,11 @@ function calcularHoraObjetivoDesbloqueo() {
 /**
  * Activa/desactiva el bloqueo manualmente desde admin.html (requiere PIN).
  * data: { activo: true|false, pin: '2901' }
+ *
+ * IMPORTANTE: desactivar el bloqueo (activo:false) es también la señal que
+ * dispara la revelación del campeón (podio en suspense + popup fijo) para
+ * todo el mundo. Se marca con REVEAL_TRIGGERED_AT para que el frontend sepa
+ * que es un evento "nuevo" y reproduzca la animación una vez por navegador.
  */
 function setLockStatus(data) {
   if (String(data.pin) !== ADMIN_PIN_BLOQUEO) return { error: 'PIN incorrecto' };
@@ -2155,8 +2163,22 @@ function setLockStatus(data) {
     props.setProperty('BLOQUEO_AUTO_DONE', 'true'); // evita que el trigger lo reactive luego
   } else {
     props.setProperty('BLOQUEO_ACTIVO', 'false');
+    props.setProperty('PORRA_FINALIZADA', 'true');
+    props.setProperty('REVEAL_TRIGGERED_AT', new Date().toISOString());
   }
   return { success: true, activo: data.activo === true };
+}
+
+/**
+ * Retira del todo la celebración del campeón (popup fijo). A partir de
+ * este momento nadie vuelve a verlo, aunque recarguen la página.
+ * data: { pin: '2901' }
+ */
+function retirarCierre(data) {
+  if (String(data.pin) !== ADMIN_PIN_BLOQUEO) return { error: 'PIN incorrecto' };
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty('PORRA_FINALIZADA', 'false');
+  return { success: true };
 }
 
 /**
@@ -2225,6 +2247,8 @@ function resetBloqueo() {
   props.deleteProperty('BLOQUEO_ACTIVO');
   props.deleteProperty('BLOQUEO_HORA_DESBLOQUEO');
   props.deleteProperty('BLOQUEO_AUTO_DONE');
+  props.deleteProperty('PORRA_FINALIZADA');
+  props.deleteProperty('REVEAL_TRIGGERED_AT');
   CacheService.getScriptCache().remove('BLOQUEO_WAITING_LIST');
   Logger.log('✅ Bloqueo reseteado.');
 }

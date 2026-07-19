@@ -436,13 +436,20 @@
       var esperandoHtml = '<div style="font-size:.82rem;color:var(--muted);margin-top:4px">👀 ' +
         (data.waitingCount || 0) + ' esperando ahora mismo</div>';
 
+      var finalizadaHtml = data.porraFinalizada
+        ? '<div style="font-size:.82rem;color:var(--gold);margin-top:4px">🏆 Campeón revelado — el popup está fijado para todo el que entre</div>'
+        : '';
+
       card.innerHTML =
         '<div style="font-size:.92rem">' + estadoHtml + '</div>' +
-        horaHtml + esperandoHtml +
+        horaHtml + esperandoHtml + finalizadaHtml +
         '<div style="display:flex;gap:10px;margin-top:16px">' +
           '<button class="create-btn" style="background:var(--red);color:#fff" onclick="toggleLock(true)" ' + (data.activo ? 'disabled' : '') + '>🔒 Activar ahora</button>' +
-          '<button class="create-btn" style="background:var(--green)" onclick="toggleLock(false)" ' + (!data.activo ? 'disabled' : '') + '>🔓 Desactivar</button>' +
-        '</div>';
+          '<button class="create-btn" style="background:var(--green)" onclick="toggleLock(false)" ' + (!data.activo ? 'disabled' : '') + '>🔓 Desactivar y revelar campeón</button>' +
+        '</div>' +
+        (data.porraFinalizada
+          ? '<button class="cancel-btn" style="margin-top:10px" onclick="retirarCierreClick()">🗑️ Retirar celebración del todo</button>'
+          : '');
     } catch (e) {
       card.innerHTML = '<div style="color:var(--red);font-size:.84rem">Error cargando estado.</div>';
     }
@@ -451,12 +458,24 @@
   async function toggleLock(activo) {
     var msg = activo
       ? '¿Activar el bloqueo ya mismo? Todos los usuarios verán la pantalla de cierre inmediatamente.'
-      : '¿Desactivar el bloqueo? Los usuarios recuperarán el acceso normal a la app ahora mismo.';
+      : '¿Desactivar el bloqueo? Esto también DISPARA la revelación del campeón: todo el mundo verá el podio en suspense y se quedará fijado el popup del ganador. Asegúrate de que ya has revisado bien el ranking antes de confirmar.';
     if (!confirm(msg)) return;
     try {
       var res = await post({ action: 'setLockStatus', activo: activo, pin: ADMIN_PIN });
       if (res.error) { toast('❌ ' + res.error, 'err'); return; }
-      toast(activo ? '🔒 Bloqueo activado' : '🔓 Bloqueo desactivado', 'ok');
+      toast(activo ? '🔒 Bloqueo activado' : '🔓 Bloqueo desactivado · 🏆 Campeón revelado', 'ok');
+      loadLockStatus();
+    } catch (e) {
+      toast('❌ Error de conexión', 'err');
+    }
+  }
+
+  async function retirarCierreClick() {
+    if (!confirm('¿Retirar la celebración del campeón del todo? A partir de ahora nadie volverá a ver el popup, ni recargando la página.')) return;
+    try {
+      var res = await post({ action: 'retirarCierre', pin: ADMIN_PIN });
+      if (res.error) { toast('❌ ' + res.error, 'err'); return; }
+      toast('🗑️ Celebración retirada', 'ok');
       loadLockStatus();
     } catch (e) {
       toast('❌ Error de conexión', 'err');
