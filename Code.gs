@@ -874,7 +874,7 @@ function getProfile(pid) {
   const champion  = getFinalWinner(matchRows, mHeaders);
   const finalist  = getFinalLoser(matchRows, mHeaders);
   const semis     = getSemiFinalists(matchRows, mHeaders);
-  const topScorer = getTopScorerName();
+  const topTeams  = getTopScoringTeams(matchRows, mHeaders);
 
   // Estado de cada especial: 'hit' | 'miss' | 'pending'
   function specStatus(pred, resolved, match) {
@@ -893,7 +893,7 @@ function getProfile(pid) {
     { key: 'finalista', icon: '🥈', label: 'Finalista',            pred: finalista, status: specStatus(finalista, finalist,  finalist),  pts_posibles: 5,  pts_ganados: finalist  && finalista === finalist  ? 5  : 0 },
     { key: 'semi1',     icon: '4️⃣', label: 'Semifinalista 1',      pred: semi1,     status: semiStatus(semi1),                           pts_posibles: 4,  pts_ganados: semis.length && semis.includes(semi1) ? 4  : 0 },
     { key: 'semi2',     icon: '4️⃣', label: 'Semifinalista 2',      pred: semi2,     status: semiStatus(semi2),                           pts_posibles: 4,  pts_ganados: semis.length && semis.includes(semi2) ? 4  : 0 },
-    { key: 'goleador',  icon: '👟', label: 'Máximo Goleador',      pred: goleador,  status: specStatus(goleador,  topScorer, topScorer), pts_posibles: 8,  pts_ganados: topScorer && goleador  === topScorer ? 8  : 0 },
+    { key: 'goleador',  icon: '👟', label: 'Selección Máxima Goleadora', pred: goleador, status: !goleador ? 'empty' : topTeams.length === 0 ? 'pending' : topTeams.includes(goleador) ? 'hit' : 'miss', pts_posibles: 8, pts_ganados: topTeams.length && topTeams.includes(goleador) ? 8 : 0 },
     { key: 'sorpresa',  icon: '💥', label: 'Sorpresa del Torneo',  pred: sorpresa,  status: !sorpresa ? 'empty' : !FAVORITES.includes(sorpresa) ? 'miss' : isEliminatedInGroups(sorpresa, matchRows, mHeaders) ? 'hit' : semis.length > 0 || champion ? 'miss' : 'pending', pts_posibles: 6, pts_ganados: sorpresa && FAVORITES.includes(sorpresa) && isEliminatedInGroups(sorpresa, matchRows, mHeaders) ? 6 : 0 },
     { key: 'estrella',  icon: '⭐', label: 'Equipo Estrella',      pred: equipoEstrella, status: equipoEstrella ? 'active' : 'empty',    pts_posibles: null, pts_ganados: historial.reduce((s, h) => s + (h.ptsEstrella || 0), 0) }
   ];
@@ -1318,6 +1318,32 @@ function getTopScorerName() {
   return scorers.length > 0 ? scorers[0].jugador : null;
 }
 
+/**
+ * Devuelve la(s) selección(es) con más goles marcados en todo el torneo,
+ * sumando goles_local/goles_visitante de todos los partidos FINISHED de
+ * la hoja Partidos (grupos + eliminatorias; en eliminatorias ya son goles
+ * a los 90', igual que el resto del sistema de puntos).
+ * Devuelve un array porque, en teoría, podría haber empate en el primer puesto.
+ * Sustituye a getTopScorerName() para la categoría especial "Máximo Goleador",
+ * que ahora se juega por selección y no por jugador individual.
+ */
+function getTopScoringTeams(matchRows, mHeaders) {
+  const goals = {};
+  for (let i = 1; i < matchRows.length; i++) {
+    const m = {};
+    mHeaders.forEach((h, j) => m[h] = matchRows[i][j]);
+    if (m.estado !== 'FINISHED') continue;
+    const gl = parseInt(m.goles_local), gv = parseInt(m.goles_visitante);
+    if (isNaN(gl) || isNaN(gv)) continue;
+    if (m.equipo_local)     goals[m.equipo_local]     = (goals[m.equipo_local]     || 0) + gl;
+    if (m.equipo_visitante) goals[m.equipo_visitante] = (goals[m.equipo_visitante] || 0) + gv;
+  }
+  const entries = Object.entries(goals);
+  if (!entries.length) return [];
+  const maxGoals = Math.max(...entries.map(([, g]) => g));
+  return entries.filter(([, g]) => g === maxGoals).map(([team]) => team);
+}
+
 // ─────────────────────────────────────────────────────────────
 //  HELPERS RESOLUCIÓN DE ESPECIALES
 // ─────────────────────────────────────────────────────────────
@@ -1495,8 +1521,8 @@ function calculatePoints(pid) {
   if (semi1 && semis.includes(semi1))     ptsSpec += 4;
   if (semi2 && semis.includes(semi2))     ptsSpec += 4;
 
-  const topScorer = getTopScorerName();
-  if (topScorer && goleador === topScorer) ptsSpec += 8;
+  const topTeams = getTopScoringTeams(matchRows, mHeaders);
+  if (goleador && topTeams.includes(goleador)) ptsSpec += 8;
 
   if (sorpresa && FAVORITES.includes(sorpresa) &&
       isEliminatedInGroups(sorpresa, matchRows, mHeaders)) {
