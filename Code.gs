@@ -1322,11 +1322,31 @@ function getTopScorerName() {
  * Devuelve la(s) selección(es) con más goles marcados en todo el torneo,
  * sumando goles_local/goles_visitante de todos los partidos FINISHED de
  * la hoja Partidos (grupos + eliminatorias; en eliminatorias ya son goles
- * a los 90', igual que el resto del sistema de puntos).
- * Devuelve un array porque, en teoría, podría haber empate en el primer puesto.
+ * a los 90', igual que el resto del sistema de puntos), más los ajustes
+ * manuales de GOLES_PRORROGA_MANUAL (ver más abajo).
+ * Devuelve un array porque puede haber empate en el primer puesto — en ese
+ * caso, TODOS los jugadores que acertaron cualquiera de las selecciones
+ * empatadas cobran el bonus (misma filosofía que "Semifinalista", donde
+ * los 4 equipos cuentan igual sin desempate entre ellos).
  * Sustituye a getTopScorerName() para la categoría especial "Máximo Goleador",
  * que ahora se juega por selección y no por jugador individual.
  */
+
+/**
+ * Corrección manual de goles marcados en la PRÓRROGA.
+ * `goles_local`/`goles_visitante` en Partidos solo guardan el marcador a
+ * los 90' (a propósito, para no inflar con prórroga/penaltis el resto del
+ * sistema de puntos). Pero la estadística oficial de "Goals" de FIFA.com sí
+ * cuenta el partido completo, prórroga incluida. Para que "Selección Máxima
+ * Goleadora" case con esa cifra oficial, se suman aquí a mano los goles de
+ * prórroga confirmados. Añadir una entrada por cada gol, con el partido y
+ * minuto como referencia — así queda documentado y no hay que tocar el
+ * resto del sistema de puntuación.
+ */
+const GOLES_PRORROGA_MANUAL = {
+  'England': 1  // Jude Bellingham, min. 93' — Noruega 1-2 Inglaterra, cuartos (partido id 537385)
+};
+
 function getTopScoringTeams(matchRows, mHeaders) {
   const goals = {};
   for (let i = 1; i < matchRows.length; i++) {
@@ -1337,6 +1357,9 @@ function getTopScoringTeams(matchRows, mHeaders) {
     if (isNaN(gl) || isNaN(gv)) continue;
     if (m.equipo_local)     goals[m.equipo_local]     = (goals[m.equipo_local]     || 0) + gl;
     if (m.equipo_visitante) goals[m.equipo_visitante] = (goals[m.equipo_visitante] || 0) + gv;
+  }
+  for (const [team, extra] of Object.entries(GOLES_PRORROGA_MANUAL)) {
+    if (goals[team] != null) goals[team] += extra;
   }
   const entries = Object.entries(goals);
   if (!entries.length) return [];
