@@ -965,6 +965,37 @@
         letter-spacing: .06em; color: #0a0c10; cursor: pointer; transition: opacity .2s;
       }
       .achiev-btn-ok:hover { opacity: .85; }
+
+      /* ——— Popup "Novela del Mundial" ——— */
+      .novela-overlay {
+        position: fixed; inset: 0;
+        background: rgba(7,9,15,.88); backdrop-filter: blur(10px);
+        z-index: 400; display: flex; align-items: center; justify-content: center; padding: 20px;
+      }
+      .novela-overlay.hidden { display: none; }
+      .novela-modal {
+        background: var(--card); border: 1px solid rgba(240,180,41,.35);
+        border-radius: 20px; padding: 30px 26px 26px; width: 100%; max-width: 420px;
+        text-align: center; box-shadow: 0 0 50px rgba(240,180,41,.13);
+        animation: lq-in .28s ease; position: relative;
+      }
+      .novela-close {
+        position: absolute; top: 14px; right: 16px; background: none; border: none;
+        color: var(--muted); font-size: 1.2rem; cursor: pointer;
+      }
+      .novela-close:hover { color: var(--text); }
+      .novela-icon { font-size: 2.4rem; margin-bottom: 10px; }
+      .novela-title { font-family: "Bebas Neue", cursive; font-size: 1.5rem; letter-spacing: .04em; color: var(--gold); line-height: 1.15; margin-bottom: 10px; }
+      .novela-sub { font-size: .85rem; color: var(--silver); line-height: 1.5; margin-bottom: 22px; }
+      .novela-actions { display: flex; flex-direction: column; gap: 10px; }
+      .novela-btn {
+        display: block; width: 100%; border-radius: 12px; padding: 13px;
+        font-family: "Bebas Neue", cursive; font-size: 1.05rem; letter-spacing: .05em;
+        text-decoration: none; cursor: pointer; transition: opacity .2s; border: none;
+      }
+      .novela-btn.primary { background: var(--gold); color: #0a0c10; }
+      .novela-btn.secondary { background: rgba(255,255,255,.06); color: var(--text); border: 1px solid var(--border); }
+      .novela-btn:hover { opacity: .85; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   </head>
@@ -996,6 +1027,11 @@
       </div>
       <h1>PORRA MUNDIAL 2026</h1>
       <p class="hero-sub">USA · CANADA · MEXICO · 11 JUN – 19 JUL 2026</p>
+      <div class="champion-banner hidden" id="championBanner">
+        <div class="champion-trophy">🏆</div>
+        <div class="champion-name" id="championName">—</div>
+        <div class="champion-msg" id="championMsg"></div>
+      </div>
       <div class="stats-strip" id="statsStrip">
         <div class="stat-pill">
           <span class="stat-icon">⚽</span>
@@ -1152,6 +1188,20 @@
         <div class="achiev-list" id="achievList"></div>
         <div class="achiev-footer">
           <button class="achiev-btn-ok" onclick="closeAchievements()">¡Entendido!</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ——— Popup promo "Novela del Mundial" ——— -->
+    <div class="novela-overlay hidden" id="novelaOverlay">
+      <div class="novela-modal">
+        <button class="novela-close" onclick="closeNovelaPromo()">✕</button>
+        <div class="novela-icon">📖</div>
+        <div class="novela-title">¿Quieres conocer tu Novela del Mundial?</div>
+        <div class="novela-sub" id="novelaSub">El resumen (con mucho cachondeo) de cómo ha ido tu clasificación, subida a subida y bajón a bajón.</div>
+        <div class="novela-actions">
+          <a class="novela-btn primary" id="novelaBtnMia" href="#">📖 Ver la mía</a>
+          <a class="novela-btn secondary" href="novela.html">👀 Ver la de otro</a>
         </div>
       </div>
     </div>
@@ -1967,7 +2017,43 @@
 
       checkLiveQuestion(); // lanza el popup si hay pregunta activa
       checkRecentAchievements(); // popup logros nuevos
+      checkNovelaPromo(); // popup "Novela del Mundial"
       setInterval(refresh, 60_000); // cada 60 segundos
+
+      // ——— Popup promo "Novela del Mundial" ———
+      async function checkNovelaPromo() {
+        try {
+          var res = await api({ action: 'getHistory' });
+          var byPid = res.byPid || {};
+          var allDates = new Set();
+          Object.keys(byPid).forEach(function(pid) {
+            (byPid[pid].data || []).forEach(function(d) { allDates.add(String(d.ts).slice(0, 10)); });
+          });
+          if (allDates.size < 2) return; // aún no hay suficiente novela que contar
+
+          var raw = localStorage.getItem('porra2026_user');
+          var btnMia = document.getElementById('novelaBtnMia');
+          if (raw) {
+            try {
+              var u = JSON.parse(raw);
+              if (u && u.id) {
+                btnMia.href = 'novela.html?pid=' + encodeURIComponent(u.id);
+              } else { btnMia.style.display = 'none'; }
+            } catch(_) { btnMia.style.display = 'none'; }
+          } else {
+            btnMia.style.display = 'none';
+            document.getElementById('novelaSub').textContent = 'Descubre cómo le ha ido a cualquiera en el ranking, con comentarios que no te vas a esperar.';
+          }
+
+          setTimeout(function() {
+            document.getElementById('novelaOverlay').classList.remove('hidden');
+          }, 1800);
+        } catch(e) { console.warn('Novela promo error:', e); }
+      }
+
+      function closeNovelaPromo() {
+        document.getElementById('novelaOverlay').classList.add('hidden');
+      }
 
       // ─── Menú hamburguesa ───
       function toggleMenu() {
@@ -2222,8 +2308,7 @@
   .podium-pts { font-size: .76rem; color: var(--muted); margin-top: 2px; }
 
   .champion-banner {
-    position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
-    z-index: 500; width: min(94vw, 460px);
+    width: min(94vw, 460px); margin: 0 auto 8px;
     background: var(--card); border: 1px solid rgba(240,180,41,.4);
     border-radius: 16px; padding: 20px 22px; text-align: center;
     box-shadow: 0 10px 44px rgba(0,0,0,.5);
@@ -2266,12 +2351,6 @@
       <div class="bar"></div>
     </div>
   </div>
-</div>
-
-<div class="champion-banner hidden" id="championBanner">
-  <div class="champion-trophy">🏆</div>
-  <div class="champion-name" id="championName">—</div>
-  <div class="champion-msg" id="championMsg"></div>
 </div>
 
 <script>

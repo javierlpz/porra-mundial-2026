@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>La Novela del Mundial · Porra Mundial 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #07090f; --surface: #0f1320; --card: #141929;
+      --border: rgba(255,255,255,.07); --gold: #f0b429; --gold2: #ffd76e;
+      --green: #22c55e; --blue: #3b82f6; --red: #ef4444; --text: #f1f5f9;
+      --muted: #64748b; --silver: #94a3b8; --bronze: #d97706; --radius: 14px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: "Outfit", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ——— Nav ——— */
+    nav {
+      position: sticky; top: 0; z-index: 100; display: flex;
+      align-items: center; justify-content: space-between;
+      padding: 0 24px; height: 64px;
+      background: rgba(7,9,15,.85); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { font-family: "Bebas Neue", cursive; font-size: 1.4rem; letter-spacing: .08em; color: var(--gold); }
+    .nav-logo span { color: var(--text); }
+    .nav-links { display: flex; gap: 6px; }
+    .nav-links a { text-decoration: none; color: var(--silver); font-size: .875rem; font-weight: 500; padding: 7px 14px; border-radius: 8px; transition: all .2s; }
+    .nav-links a:hover { color: var(--text); background: rgba(255,255,255,.06); }
+    .nav-user-name { font-size: .875rem; font-weight: 600; color: var(--gold); text-decoration: none; }
+    .nav-user-name:hover { text-decoration: underline; }
+    .nav-logout {
+      background: none; border: 1px solid var(--border); border-radius: 8px;
+      padding: 5px 12px; color: var(--muted); cursor: pointer;
+      font-family: inherit; font-size: .8rem; transition: all .2s;
+    }
+    .nav-logout:hover { border-color: var(--red); color: var(--red); }
+    .hamburger {
+      display: none; background: none; border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 10px; cursor: pointer;
+      color: var(--silver); font-size: 1.1rem; font-family: inherit;
+      line-height: 1; transition: all .2s; flex-shrink: 0;
+    }
+    .hamburger:hover { border-color: rgba(255,255,255,.2); color: var(--text); }
+    #mobileUserRow {
+      display: none;
+      border-top: 1px solid rgba(255,255,255,.07);
+      margin-top: 6px; padding: 10px 14px 4px;
+      align-items: center; justify-content: space-between; gap: 8px;
+    }
+    #mobileUserRow .mu-name { font-size: .9rem; font-weight: 600; color: var(--gold); }
+    #mobileUserRow .mu-logout {
+      background: none; border: 1px solid rgba(239,68,68,.3);
+      border-radius: 8px; padding: 5px 10px; color: var(--red);
+      font-family: inherit; font-size: .78rem; cursor: pointer;
+    }
+    @media (max-width: 640px) {
+      .hamburger  { display: block !important; }
+      .nav-user   { display: none !important; }
+      .nav-links  {
+        display: none !important;
+        position: fixed; top: 64px; left: 0; right: 0;
+        background: rgba(7,9,15,.97);
+        backdrop-filter: blur(16px);
+        flex-direction: column !important;
+        padding: 12px;
+        border-bottom: 1px solid rgba(255,255,255,.07);
+        z-index: 99;
+        gap: 0 !important;
+      }
+      .nav-links.mobile-open { display: flex !important; }
+      .nav-links a { padding: 10px 14px !important; font-size: .9rem !important; width: 100%; border-radius: 8px; }
+      #mobileUserRow { display: flex !important; }
+      nav { padding: 0 14px; }
+    }
+
+    /* ——— Page header ——— */
+    .page-header { padding: 44px 24px 8px; max-width: 900px; margin: 0 auto; text-align: center; }
+    .page-title { font-family: "Bebas Neue", cursive; font-size: clamp(2.2rem, 6vw, 3rem); letter-spacing: .04em; line-height: 1; margin-bottom: 8px; }
+    .page-sub { font-size: .92rem; color: var(--silver); max-width: 520px; margin: 0 auto; }
+
+    .content { max-width: 900px; margin: 0 auto; padding: 28px 24px 60px; }
+    .loading-msg { text-align: center; padding: 64px 24px; color: var(--muted); font-size: .9rem; }
+    .error-msg { text-align: center; padding: 48px; color: var(--red); font-size: .9rem; }
+
+    /* ——— Selector ——— */
+    .sel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+    .sel-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px; display: flex; align-items: center; gap: 12px; cursor: pointer;
+      transition: all .18s; text-align: left; color: var(--text); font-family: inherit;
+    }
+    .sel-card:hover { border-color: rgba(240,180,41,.4); transform: translateY(-2px); }
+    .sel-avatar {
+      width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--gold), #d97706);
+      display: flex; align-items: center; justify-content: center;
+      font-family: "Bebas Neue", cursive; font-size: 1.2rem; color: #0a0c10;
+    }
+    .sel-info { min-width: 0; }
+    .sel-name { font-weight: 700; font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sel-meta { font-size: .76rem; color: var(--muted); margin-top: 2px; }
+
+    /* ——— Timeline view header ——— */
+    .tl-header {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 22px; flex-wrap: wrap;
+    }
+    .tl-avatar {
+      width: 58px; height: 58px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--gold), #d97706);
+      display: flex; align-items: center; justify-content: center;
+      font-family: "Bebas Neue", cursive; font-size: 1.6rem; color: #0a0c10;
+      border: 3px solid rgba(240,180,41,.3);
+    }
+    .tl-name { font-family: "Bebas Neue", cursive; font-size: 1.9rem; letter-spacing: .04em; line-height: 1; }
+    .tl-pos { font-size: .85rem; color: var(--silver); margin-top: 2px; }
+    .back-link {
+      text-decoration: none; color: var(--silver); font-size: .82rem; font-weight: 500;
+      padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border);
+      transition: all .2s; white-space: nowrap; background: none; cursor: pointer; font-family: inherit;
+      margin-left: auto;
+    }
+    .back-link:hover { border-color: rgba(240,180,41,.4); color: var(--gold); }
+
+    /* ——— Resumen stats ——— */
+    .tl-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 30px; }
+    .tl-stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; text-align: center; }
+    .tl-stat-val { font-family: "Bebas Neue", cursive; font-size: 1.6rem; line-height: 1; }
+    .tl-stat-val.gold { color: var(--gold); }
+    .tl-stat-val.green { color: var(--green); }
+    .tl-stat-val.red { color: var(--red); }
+    .tl-stat-lbl { font-size: .66rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-top: 3px; }
+    @media (max-width: 560px) { .tl-stats { grid-template-columns: repeat(2, 1fr); } }
+
+    /* ——— Timeline ——— */
+    .timeline { position: relative; padding-left: 38px; }
+    .timeline::before {
+      content: ''; position: absolute; left: 14px; top: 6px; bottom: 6px;
+      width: 2px; background: linear-gradient(var(--border), var(--border));
+    }
+    .tl-item { position: relative; margin-bottom: 20px; }
+    .tl-item:last-child { margin-bottom: 0; }
+    .tl-dot {
+      position: absolute; left: -38px; top: 2px; width: 30px; height: 30px;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; background: var(--surface); border: 2px solid var(--border); z-index: 1;
+    }
+    .tl-dot.up   { border-color: rgba(34,197,94,.55); background: rgba(34,197,94,.1); }
+    .tl-dot.down { border-color: rgba(239,68,68,.55); background: rgba(239,68,68,.1); }
+    .tl-dot.same { border-color: rgba(100,116,139,.5); background: rgba(100,116,139,.08); }
+    .tl-dot.gold { border-color: rgba(240,180,41,.6); background: rgba(240,180,41,.12); box-shadow: 0 0 14px rgba(240,180,41,.2); }
+    .tl-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+    .tl-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+    .tl-date { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    .tl-move { font-family: "Bebas Neue", cursive; font-size: 1.05rem; letter-spacing: .03em; }
+    .tl-move.up   { color: var(--green); }
+    .tl-move.down { color: var(--red); }
+    .tl-move.same { color: var(--muted); }
+    .tl-pts-badge { font-size: .74rem; color: var(--silver); }
+    .tl-comment { font-size: .9rem; color: var(--text); line-height: 1.45; }
+
+    footer { text-align: center; padding: 32px 24px 48px; color: var(--muted); font-size: .78rem; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="index.html" style="text-decoration:none"><div class="nav-logo">⚽ PORRA <span>2026</span></div></a>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html">Ranking</a>
+      <a href="mis-picks.html">Mis Apuestas</a>
+      <a href="bracket.html">Cuadro</a>
+      <a href="reglas.html">Reglas</a>
+    </div>
+    <div class="nav-user" id="navUser" style="display:none">
+      <a href="#" id="navUserName" class="nav-user-name"></a>
+      <button class="nav-logout" onclick="doLogout()">Salir</button>
+    </div>
+    <button class="hamburger" id="hamburger" onclick="toggleMenu()" aria-label="Menú">☰</button>
+  </nav>
+
+  <div class="page-header">
+    <div class="page-title">📖 La Novela del Mundial</div>
+    <div class="page-sub">Quién ha volado como un crack y quién se ha resbalado con la cáscara del plátano. Todo queda registrado.</div>
+  </div>
+
+  <div class="content">
+
+    <div id="loadingView" class="loading-msg">⏳ Cargando historias…</div>
+    <div id="errorView" class="error-msg" style="display:none">❌ No se pudo cargar el histórico.</div>
+
+    <!-- SELECTOR -->
+    <div id="selectorView" style="display:none">
+      <div class="sel-grid" id="selGrid"></div>
+    </div>
+
+    <!-- TIMELINE -->
+    <div id="timelineView" style="display:none">
+      <div class="tl-header">
+        <div class="tl-avatar" id="tlAvatar">?</div>
+        <div>
+          <div class="tl-name" id="tlName">—</div>
+          <div class="tl-pos" id="tlPos">—</div>
+        </div>
+        <button class="back-link" onclick="showSelector()">← Elegir a otro</button>
+      </div>
+
+      <div class="tl-stats" id="tlStats"></div>
+
+      <div class="timeline" id="tlList"></div>
+    </div>
+
+  </div>
+
+  <footer>Porra Mundial 2026</footer>
+
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxmreAnz7xl9COTf3a_g1rczwNHerPMmSGst1GLPCC5EVMCONEB6xlkdMsQ-ZejVA-VqA/exec";
+
+    async function api(params) {
+      const res = await fetch(SCRIPT_URL + '?' + new URLSearchParams(params));
+      return res.json();
+    }
+
+    function escHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  BANCO DE FRASES — categorizadas, sin repetir dentro de
+    //  la misma novela (se consumen de una cola barajada).
+    // ─────────────────────────────────────────────────────────
+    const FRASES = {
+      PRIMER_DIA: [
+        "📍 Arranca la novela. Puesto inicial: aquí empieza todo.",
+        "🎬 Primer capítulo. Que empiece el espectáculo.",
+        "🚩 Punto de partida marcado en el mapa.",
+        "📖 Página uno de esta historia.",
+        "🌱 Semilla plantada, veremos qué crece.",
+        "🎽 Toma la salida de esta carrera de fondo."
+      ],
+      MEGA_SUBIDA: [
+        "🚀 Escaló tantos puestos que ha necesitado pasaporte nuevo. Menuda machada.",
+        "🔥 Se ha comido el ranking entero en un solo día. Que alguien le pida el secreto.",
+        "🐐 Del fondo del mar a la cima del Everest en 24 horas. Leyenda viva.",
+        "🎢 Remontada de las que se cuentan en el bar durante meses.",
+        "⚡ Ha subido más rápido que el precio de la cerveza en la final.",
+        "🏔️ Escalada digna de documental de Netflix. Nadie se lo esperaba.",
+        "💥 Explosión de puntos que ha dejado temblando a medio grupo.",
+        "🦸 Se puso la capa y salvó su temporada en un solo día."
+      ],
+      GRAN_SUBIDA: [
+        "📈 Subidón serio. Empieza a oler a amenaza real.",
+        "💪 Ha metido la directa y se nota.",
+        "🎯 Varios puestos de un tirón, nada mal para un día cualquiera.",
+        "🐆 Se ha puesto rápido, muy rápido.",
+        "🔋 Cargó pilas y ha dado un buen salto.",
+        "🚴 Pedaleando fuerte, se acerca peligrosamente.",
+        "📊 La gráfica ya no es una línea plana, ahora es una rampa.",
+        "🌟 Buen día de oficina. De los que se recuerdan."
+      ],
+      SUBIDA_PEQ: [
+        "🙂 Sube un poco, nada del otro mundo, pero suma.",
+        "👣 Pasito a pasito, sin prisa pero sin pausa.",
+        "🧗 Escalada modesta pero constante.",
+        "☕ Un empujoncito suave, como quien no quiere la cosa.",
+        "🐢 Lento pero seguro, ahí sigue trepando.",
+        "📶 Señal de vida: sube un peldaño más.",
+        "🌱 Crecimiento discreto, de los que no hacen ruido.",
+        "🚶 Sigue caminando hacia arriba, sin correr pero sin parar."
+      ],
+      IGUAL: [
+        "😐 Día sin pena ni gloria. Ni sube ni baja, como un domingo cualquiera.",
+        "🛋️ Se quedó en el sofá, literal y metafóricamente.",
+        "🥱 Jornada de bostezo. Ni fu ni fa.",
+        "⏸️ Pausa técnica en su temporada.",
+        "🦴 Se quedó clavado como un hueso en la garganta del ranking.",
+        "🌫️ Un día gris, sin sobresaltos.",
+        "🧊 Congelado en su puesto, ni un centímetro de más.",
+        "😴 Modo avión activado, cero movimiento."
+      ],
+      BAJADA_PEQ: [
+        "📉 Un tropiezo tonto, nada que un par de aciertos no arregle.",
+        "🍌 Resbalón sin gracia, se recupera rápido.",
+        "😅 Cae un poco, pero disimula bien.",
+        "🚧 Bache pequeño en la carretera.",
+        "🎈 Se desinfla un poquito, sin drama.",
+        "🐌 Pierde posiciones a paso de caracol... pero hacia atrás.",
+        "🙃 Día flojo, se le perdona.",
+        "🧦 Un pinchazo menor, nada que no arregle un buen día de aciertos."
+      ],
+      GRAN_BAJADA: [
+        "📉 Caída seria. Empieza a sudar.",
+        "🥴 Se ha mareado y ha bajado varios escalones de golpe.",
+        "🧨 Explosión controlada... a la baja.",
+        "🚨 Alarma activada en su casa, esto ya duele.",
+        "🕳️ Se cae por un buen agujero de puestos.",
+        "🎭 Tragedia griega en su ranking particular.",
+        "❄️ Racha helada, se le congelan los aciertos.",
+        "🪂 Salta sin paracaídas y aterriza varios puestos más abajo."
+      ],
+      MEGA_BAJADA: [
+        "💀 Se ha pegado un batacazo de los que hacen historia. Que alguien le traiga un café.",
+        "🕳️ Ha cavado un pozo y se ha metido dentro él solito.",
+        "🌊 Se lo ha llevado la marea. Naufragio en toda regla.",
+        "🎢 De la cima al sótano en un abrir y cerrar de ojos.",
+        "🧊 Se ha convertido en el nuevo hielo del Titanic.",
+        "🩹 Esto va a necesitar más que una tirita.",
+        "📉 Caída libre sin red. Que alguien avise a los bomberos.",
+        "☠️ Peor que el VAR en directo. Menudo desplome."
+      ],
+      NUEVO_LIDER: [
+        "👑 ¡Nuevo líder! Que le hagan sitio en el trono.",
+        "🏆 Toma la cabeza del ranking. A ver cuánto dura.",
+        "🥇 Se corona líder. Los demás, a temblar.",
+        "👑 Asalto al trono completado con éxito.",
+        "🦁 Se pone al frente de la manada.",
+        "🎖️ Primer puesto conquistado. Que suene el himno."
+      ],
+      PIERDE_CORONA: [
+        "😱 Pierde el trono. Larga vida al nuevo líder.",
+        "👑💔 Corona caída. Reinado más corto que un partido de penaltis.",
+        "🏃 Bajado del podio más alto a toda prisa.",
+        "😬 Se le escapa el primer puesto entre los dedos.",
+        "🎬 Fin del reinado. Créditos y a otra cosa.",
+        "🪦 R.I.P. liderato. Descanse en paz."
+      ],
+      ENTRA_PODIO: [
+        "🥉 Entra al podio por la puerta grande.",
+        "🎉 Se cuela entre los tres primeros. Bienvenido al club VIP.",
+        "🏅 Podio conseguido. Que empiecen los flashes.",
+        "🚪 Toca a la puerta del top 3 y le abren.",
+        "🎊 Sube al escenario de los elegidos.",
+        "🏆 Se apunta al selecto grupo de cabeza."
+      ],
+      CAE_PODIO: [
+        "😢 Se cae del podio. Que alguien le pase un pañuelo.",
+        "🚪 Le enseñan la salida del top 3.",
+        "📤 Expulsado de la zona noble, sin miramientos.",
+        "🥲 Adiós al podio, ha sido bonito mientras duró.",
+        "🎢 Baja del escenario a las bambalinas.",
+        "🏚️ Se muda del ático a un piso más humilde."
+      ],
+      ULTIMO_PUESTO: [
+        "🚨 Toca fondo. Bienvenido al farolillo rojo.",
+        "🔴 Último puesto oficial. Menudo marrón.",
+        "🥄 Se lleva la cuchara de madera, con todos los honores.",
+        "🏴 Ondea la bandera negra en su clasificación.",
+        "🧯 Esto necesita un extintor con urgencia.",
+        "🆘 Señal de socorro desde el fondo de la tabla."
+      ],
+      ESCAPA_ULTIMO: [
+        "🎉 ¡Escapa del último puesto! Se respira aliviado.",
+        "🪜 Sube desde el sótano, aunque sea un peldaño.",
+        "🌅 Ve la luz después de tocar fondo.",
+        "🧗 Empieza la escalada de la redención.",
+        "🙌 Deja de ser el farolillo rojo. Momento histórico.",
+        "🐣 Renace desde las cenizas del último puesto."
+      ]
+    };
+
+    // Colas barajadas por categoría (una por render de timeline)
+    function shuffle(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function crearDispensador() {
+      const colas = {};
+      const ultimoUsado = {};
+      return function siguienteFrase(cat) {
+        if (!colas[cat] || colas[cat].length === 0) {
+          let barajada = shuffle(FRASES[cat] || ['—']);
+          // evitar que la primera de la nueva vuelta sea igual a la última usada
+          if (barajada.length > 1 && barajada[0] === ultimoUsado[cat]) {
+            [barajada[0], barajada[1]] = [barajada[1], barajada[0]];
+          }
+          colas[cat] = barajada;
+        }
+        const frase = colas[cat].shift();
+        ultimoUsado[cat] = frase;
+        return frase;
+      };
+    }
+
+    function fmtFecha(ts) {
+      const d = new Date(String(ts).slice(0, 10) + 'T12:00:00');
+      if (isNaN(d.getTime())) return String(ts).slice(0, 10);
+      return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function computeEvent(prevPos, currPos, totalParticipantes) {
+      const delta = prevPos - currPos; // positivo = sube
+      if (currPos === 1 && prevPos !== 1) return { cat: 'NUEVO_LIDER', delta, tone: 'gold' };
+      if (prevPos === 1 && currPos !== 1) return { cat: 'PIERDE_CORONA', delta, tone: 'down' };
+      if (currPos <= 3 && prevPos > 3)    return { cat: 'ENTRA_PODIO', delta, tone: 'gold' };
+      if (prevPos <= 3 && currPos > 3)    return { cat: 'CAE_PODIO', delta, tone: 'down' };
+      if (currPos === totalParticipantes && prevPos !== totalParticipantes) return { cat: 'ULTIMO_PUESTO', delta, tone: 'down' };
+      if (prevPos === totalParticipantes && currPos !== totalParticipantes) return { cat: 'ESCAPA_ULTIMO', delta, tone: 'gold' };
+      if (delta >= 5) return { cat: 'MEGA_SUBIDA', delta, tone: 'up' };
+      if (delta >= 3) return { cat: 'GRAN_SUBIDA', delta, tone: 'up' };
+      if (delta >= 1) return { cat: 'SUBIDA_PEQ', delta, tone: 'up' };
+      if (delta === 0) return { cat: 'IGUAL', delta, tone: 'same' };
+      if (delta >= -2) return { cat: 'BAJADA_PEQ', delta, tone: 'down' };
+      if (delta >= -4) return { cat: 'GRAN_BAJADA', delta, tone: 'down' };
+      return { cat: 'MEGA_BAJADA', delta, tone: 'down' };
+    }
+
+    const DOT_ICON = { up: '▲', down: '▼', same: '➡️', gold: '👑' };
+
+    // ─────────────────────────────────────────────────────────
+    //  CARGA DE DATOS
+    // ─────────────────────────────────────────────────────────
+    let byPid = {};
+    let sortedPids = [];
+
+    async function loadAll() {
+      try {
+        const res = await api({ action: 'getHistory' });
+        byPid = res.byPid || {};
+        sortedPids = Object.keys(byPid)
+          .filter(id => (byPid[id].data || []).length > 0)
+          .sort((a, b) => {
+            const la = byPid[a].data[byPid[a].data.length - 1]?.total || 0;
+            const lb = byPid[b].data[byPid[b].data.length - 1]?.total || 0;
+            return lb - la;
+          });
+
+        if (sortedPids.length === 0) {
+          document.getElementById('loadingView').innerHTML =
+            '⏳ Todavía no hay suficiente histórico para escribir novelas. Vuelve en unos días.';
+          return;
+        }
+
+        renderSelector();
+
+        const urlPid = new URLSearchParams(window.location.search).get('pid');
+        if (urlPid && byPid[urlPid]) {
+          renderTimeline(urlPid);
+        } else {
+          showSelector();
+        }
+      } catch (e) {
+        console.warn(e);
+        document.getElementById('loadingView').style.display = 'none';
+        document.getElementById('errorView').style.display = 'block';
+      }
+    }
+
+    function renderSelector() {
+      const grid = document.getElementById('selGrid');
+      grid.innerHTML = sortedPids.map(pid => {
+        const p = byPid[pid];
+        const last = p.data[p.data.length - 1] || {};
+        const init = (p.nombre || '?')[0].toUpperCase();
+        return `<button class="sel-card" onclick="renderTimeline('${pid}')">
+          <div class="sel-avatar">${init}</div>
+          <div class="sel-info">
+            <div class="sel-name">${escHtml(p.nombre)}</div>
+            <div class="sel-meta">#${last.pos || '—'} · ${last.total || 0} pts</div>
+          </div>
+        </button>`;
+      }).join('');
+    }
+
+    function showSelector() {
+      history.replaceState(null, '', 'novela.html');
+      document.getElementById('loadingView').style.display = 'none';
+      document.getElementById('errorView').style.display = 'none';
+      document.getElementById('timelineView').style.display = 'none';
+      document.getElementById('selectorView').style.display = 'block';
+    }
+
+    function renderTimeline(pid) {
+      const p = byPid[pid];
+      if (!p) return;
+
+      history.replaceState(null, '', 'novela.html?pid=' + encodeURIComponent(pid));
+      document.getElementById('loadingView').style.display = 'none';
+      document.getElementById('errorView').style.display = 'none';
+      document.getElementById('selectorView').style.display = 'none';
+      document.getElementById('timelineView').style.display = 'block';
+
+      const data = (p.data || []).slice().sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
+      const last = data[data.length - 1] || {};
+      const init = (p.nombre || '?')[0].toUpperCase();
+
+      document.getElementById('tlAvatar').textContent = init;
+      document.getElementById('tlName').textContent = p.nombre || '—';
+      document.getElementById('tlPos').textContent = `#${last.pos || '—'} · ${last.total || 0} puntos`;
+
+      const totalParticipantes = Object.keys(byPid).length;
+      const dispensar = crearDispensador();
+
+      let mejorPuesto = Infinity, peorPuesto = -Infinity, subidas = 0, bajadas = 0;
+
+      const items = data.map((snap, i) => {
+        mejorPuesto = Math.min(mejorPuesto, snap.pos);
+        peorPuesto = Math.max(peorPuesto, snap.pos);
+
+        if (i === 0) {
+          const frase = dispensar('PRIMER_DIA');
+          return { tone: 'gold', ts: snap.ts, pos: snap.pos, total: snap.total, moveLabel: `Arranca en #${snap.pos}`, frase };
+        }
+
+        const prev = data[i - 1];
+        const ev = computeEvent(prev.pos, snap.pos, totalParticipantes);
+        if (ev.delta > 0) subidas++; else if (ev.delta < 0) bajadas++;
+
+        let moveLabel;
+        if (ev.delta === 0) moveLabel = `Se mantiene en #${snap.pos}`;
+        else if (ev.delta > 0) moveLabel = `#${prev.pos} → #${snap.pos} (sube ${ev.delta})`;
+        else moveLabel = `#${prev.pos} → #${snap.pos} (baja ${Math.abs(ev.delta)})`;
+
+        const ptsDelta = (snap.total || 0) - (prev.total || 0);
+        const frase = dispensar(ev.cat);
+
+        return { tone: ev.tone, ts: snap.ts, pos: snap.pos, total: snap.total, moveLabel, ptsDelta, frase };
+      });
+
+      document.getElementById('tlStats').innerHTML = `
+        <div class="tl-stat"><div class="tl-stat-val gold">#${mejorPuesto}</div><div class="tl-stat-lbl">Mejor puesto</div></div>
+        <div class="tl-stat"><div class="tl-stat-val">#${peorPuesto}</div><div class="tl-stat-lbl">Peor puesto</div></div>
+        <div class="tl-stat"><div class="tl-stat-val green">${subidas}</div><div class="tl-stat-lbl">Subidas</div></div>
+        <div class="tl-stat"><div class="tl-stat-val red">${bajadas}</div><div class="tl-stat-lbl">Bajadas</div></div>
+      `;
+
+      document.getElementById('tlList').innerHTML = items.slice().reverse().map(it => {
+        const ptsStr = (it.ptsDelta !== undefined)
+          ? `<span class="tl-pts-badge">${it.ptsDelta >= 0 ? '+' : ''}${it.ptsDelta} pts ese día</span>`
+          : '';
+        return `<div class="tl-item">
+          <div class="tl-dot ${it.tone}">${DOT_ICON[it.tone]}</div>
+          <div class="tl-card">
+            <div class="tl-top">
+              <span class="tl-date">${fmtFecha(it.ts)}</span>
+              ${ptsStr}
+            </div>
+            <div class="tl-move ${it.tone === 'gold' ? 'up' : it.tone}">${it.moveLabel}</div>
+            <div class="tl-comment">${escHtml(it.frase)}</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    loadAll();
+
+    // ─── Menú hamburguesa ───
+    function toggleMenu() {
+      var links = document.getElementById('navLinks');
+      var btn   = document.getElementById('hamburger');
+      if (!links) return;
+      links.classList.toggle('mobile-open');
+      btn.textContent = links.classList.contains('mobile-open') ? '✕' : '☰';
+    }
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('nav')) {
+        var links = document.getElementById('navLinks');
+        if (links) links.classList.remove('mobile-open');
+        var btn = document.getElementById('hamburger');
+        if (btn) btn.textContent = '☰';
+      }
+    });
+    // ─── Sesión compartida (todas las páginas) ───
+    function doLogout() {
+      localStorage.removeItem('porra2026_user');
+      window.location.href = 'index.html';
+    }
+    function initSession() {
+      var raw = localStorage.getItem('porra2026_user');
+      if (!raw) return;
+      try {
+        var u = JSON.parse(raw);
+        if (!u || !u.id || !u.nombre) return;
+        var navUser = document.getElementById('navUser');
+        if (navUser) {
+          navUser.style.display = 'flex';
+          var nameEl = document.getElementById('navUserName');
+          if (nameEl) {
+            nameEl.textContent = '\uD83D\uDC4B ' + u.nombre;
+            nameEl.href = 'perfil.html?pid=' + encodeURIComponent(u.id);
+          }
+        }
+        var links = document.getElementById('navLinks');
+        if (links && !document.getElementById('mobileUserRow')) {
+          var row = document.createElement('div');
+          row.id = 'mobileUserRow';
+          row.innerHTML = '<span class="mu-name">\uD83D\uDC4B ' + u.nombre + '</span>'
+            + '<button class="mu-logout" onclick="doLogout()">Salir</button>';
+          links.appendChild(row);
+        }
+      } catch(_) {}
+    }
+    initSession();
+  </script>
+</body>
+</html>
