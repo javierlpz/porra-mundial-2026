@@ -1,6 +1,7 @@
-# 🏆 Porra Mundial 2026 — Guía completa v3.0
+# 🏆 Porra Mundial 2026 — Guía completa v4.0 (final)
 
-> **Versión actual: 3.0** · Julio 2026 · Fase eliminatoria en curso
+> **Versión actual: 4.0 · Julio 2026 · Torneo finalizado**
+> El campeón ya está revelado y la porra ha cerrado. Esta guía documenta el estado final de la app tal y como quedó desplegada.
 
 ---
 
@@ -9,12 +10,13 @@
 | Archivo | Descripción |
 |---|---|
 | `Code.gs` | Backend Google Apps Script |
-| `index.html` | Ranking, crónica del día, duelo del día, simulador, gráfico |
+| `index.html` | Ranking, crónica del día, duelo del día, simulador, gráfico, pantalla de cierre y revelación del campeón |
 | `mis-picks.html` | Predicciones, joker, especiales |
 | `bracket.html` | Cuadro del torneo |
 | `reglas.html` | Reglas y puntuación |
 | `perfil.html` | Perfil público de cada jugador (incluye historial de duelos) |
-| `admin.html` | Panel de administración: preguntas en vivo + logros manuales (protegido por PIN) |
+| `novela.html` | "Novela del Mundial" — cronología narrativa con comentarios humorísticos de la evolución de cada jugador en el ranking |
+| `admin.html` | Panel de administración: preguntas en vivo, logros manuales y control del bloqueo final (protegido por PIN) |
 | `.github/workflows/deploy.yml` | Pipeline de despliegue automático |
 
 ---
@@ -34,7 +36,7 @@
 
 ---
 
-## FLUJO DE TRABAJO (día a día)
+## FLUJO DE TRABAJO (día a día — referencia por si hay que retocar algo)
 
 ```
 Claude genera archivos → descargar → arrastrar a carpeta local del repo
@@ -95,11 +97,12 @@ jobs:
             README.md
 ```
 
-> `server-dir: /` porque el usuario FTP `javierlopez@soydentaria.com` tiene como raíz directamente la carpeta `porra2026`. Cualquier ruta adicional crearía subcarpetas incorrectas.
+> `server-dir: /` porque el usuario FTP `javierlopez@soydentaria.com` tiene como raíz directamente la carpeta `porra2026`.
+> Cualquier ruta adicional crearía subcarpetas incorrectas.
 
 ---
 
-## INSTALACIÓN DESDE CERO
+## INSTALACIÓN DESDE CERO (por si se reutiliza para un futuro torneo)
 
 ### Paso 1 — Google Sheet
 
@@ -123,7 +126,7 @@ Hojas creadas automáticamente:
 | `Predicciones` | Picks de cada jugador |
 | `Predicciones_Especiales` | Campeón, goleador, estrella… |
 | `Puntuaciones` | Ranking en tiempo real |
-| `Historico_Ranking` | Snapshot diario (para el gráfico) |
+| `Historico_Ranking` | Snapshot diario (para el gráfico y la novela) |
 | `Partido_Doble` | Jokers activados |
 | `Goleadores` | Clasificación de goleadores |
 | `Retos` | Sistema de retos manuales (histórico, solo activo durante fase de grupos) |
@@ -159,7 +162,7 @@ https://script.google.com/macros/s/XXXXXXXXXXXXXXXX/exec
 
 ### Paso 5 — Configurar el frontend
 
-En los archivos HTML que llaman al backend (`index.html`, `mis-picks.html`, `bracket.html`, `perfil.html`, `admin.html`) reemplazar:
+En los archivos HTML que llaman al backend (`index.html`, `mis-picks.html`, `bracket.html`, `perfil.html`, `novela.html`, `admin.html`) reemplazar:
 ```javascript
 const SCRIPT_URL = "TU_WEBAPP_URL_AQUI";
 ```
@@ -175,13 +178,16 @@ const SCRIPT_URL = "TU_WEBAPP_URL_AQUI";
 
 ### Paso 7 — Activar sincronización automática
 
-En Apps Script ejecutar `setupTriggers()`. Crea dos triggers:
+En Apps Script ejecutar `setupTriggers()`. Crea tres triggers:
 - `syncResults()` cada 5 minutos.
 - `generateDailyDuels()` una vez al día (medianoche, hora Madrid) — genera los emparejamientos obligatorios de duelos cuando hay partidos de eliminatoria ese día.
+- `checkAutoLock()` cada 5 minutos — activa automáticamente la pantalla de cierre final a la hora configurada (ver sección "Cierre final y revelación del campeón").
 
 ### Paso 8 — Configurar el PIN de administración
 
-El PIN de admin (`admin.html`) está hardcodeado como constante `ADMIN_PIN` en el propio archivo. Protege el lanzamiento de preguntas en vivo y la concesión de logros manuales. Cambiarlo ahí si se quiere rotar.
+El PIN de admin (`ADMIN_PIN` en `admin.html`, `ADMIN_PIN_BLOQUEO` en `Code.gs`) está hardcodeado
+como `2901`. Protege el lanzamiento de preguntas en vivo, la concesión de logros manuales y el
+control del bloqueo final. Cambiarlo en ambos sitios si se quiere rotar.
 
 ---
 
@@ -208,19 +214,23 @@ El PIN de admin (`admin.html`) está hardcodeado como constante `ADMIN_PIN` en e
 |---|---|
 | Resultado exacto | **4 pts** |
 | Ganador o empate correcto | **2 pts** |
+| Clasificado de grupo correcto | **3 pts** |
+| 1º y 2º del grupo exactos (en orden) | **5 pts** |
 
-### Fase Eliminatoria
+### Fase Eliminatoria (por partido)
 
 | Acierto | Puntos |
 |---|---|
-| Resultado exacto (90 min) | **7 pts** |
-| Solo el equipo ganador | **4 pts** |
+| Aciertas el equipo clasificado | **4 pts** |
+| Bonus: resultado exacto en 90 min | **+3 pts** (total 7 pts si aciertas ambos) |
 
 > La prórroga y los penaltis **no** cuentan para el marcador exacto, solo para determinar
 > quién avanza. `updatePartidos()` usa `score.regularTime` (no `fullTime`) para guardar el
 > marcador que se puntúa, y una columna aparte `ganador_final` guarda quién avanzó realmente
-> a la siguiente ronda. Son dos datos independientes: puedes acertar el marcador de 90' y
-> fallar quién pasa (si se decidió en penaltis), o viceversa.
+> a la siguiente ronda (calculado comparando `regularTime` + `extraTime` + `penalties`, no el
+> campo `winner` de la API, que puede ser inestable justo al terminar el partido). Son dos
+> datos independientes: puedes acertar el marcador de 90' y fallar quién pasa (si se decidió
+> en penaltis), o viceversa.
 
 ### ⭐ Equipo Estrella *(bonus permanente)*
 
@@ -258,11 +268,12 @@ rechazar el duelo.
 ### ⚡ Preguntas en vivo *(admin)*
 
 Durante un partido en directo, el admin puede lanzar desde `admin.html` (protegido por PIN)
-una pregunta sorpresa con varias opciones, puntos configurables y un temporizador de cierre.
-Aparece como pop-up a los jugadores con cuenta atrás; al enviar respuesta se guarda en
-`Respuestas_Vivo` y los puntos, si aciertan, fluyen a través de `calculatePoints()` igual que
-el resto de puntuaciones. El panel genera automáticamente un mensaje de WhatsApp listo para
-copiar y avisar al grupo.
+una pregunta sorpresa con varias opciones, puntos configurables y un temporizador de cierre
+(`createLiveQuestion`). Aparece como pop-up a los jugadores con cuenta atrás; al enviar
+respuesta se guarda en `Respuestas_Vivo` y los puntos, si aciertan, fluyen a través de
+`calculatePoints()` igual que el resto de puntuaciones. El panel genera automáticamente un
+mensaje de WhatsApp listo para copiar y avisar al grupo. Solo puede haber una pregunta activa
+a la vez; se resuelve con `resolveLiveQuestion` o se puede cancelar con `deleteLiveQuestion`.
 
 ### 🏅 Logros manuales *(admin)*
 
@@ -277,6 +288,62 @@ Además de los 8 logros automáticos, el admin puede conceder a mano desde `admi
 
 ---
 
+## 🔒 CIERRE FINAL Y REVELACIÓN DEL CAMPEÓN
+
+Sistema pensado para dar suspense al último tramo del torneo: bloquea la app la noche antes
+de conocerse el resultado de la final y, cuando el admin lo desactiva, dispara la
+celebración del campeón para todo el mundo a la vez.
+
+**Estado y flags** (guardados en `PropertiesService`, no en Sheets, porque son solo 3-4 flags
+de singleton que se leen en cada carga de página):
+
+| Flag | Significado |
+|---|---|
+| `BLOQUEO_ACTIVO` | `'true'`/`'false'` — si está activo, todos los usuarios ven la pantalla de cierre |
+| `BLOQUEO_HORA_DESBLOQUEO` | Hora objetivo (ISO) mostrada en el countdown — solo informativa, el desbloqueo real siempre lo dispara el admin a mano |
+| `BLOQUEO_AUTO_DONE` | `'true'` una vez que el trigger automático (o el admin) ha activado el bloqueo, para que no se reactive solo si luego se desactiva |
+| `PORRA_FINALIZADA` | `'true'` tras revelar al campeón — mantiene el banner fijo para cualquiera que entre después |
+| `REVEAL_TRIGGERED_AT` | Timestamp de la revelación, para que cada navegador sepa si es un evento "nuevo" y reproduzca la animación una vez |
+
+**Flujo:**
+
+1. `checkAutoLock()` (trigger cada 5 min) activa el bloqueo automáticamente la primera vez que
+   la hora en Madrid alcanza `BLOQUEO_HORA_ACTIVACION` (`22:10`), salvo que el admin ya lo haya
+   activado o desactivado a mano antes (`BLOQUEO_AUTO_DONE` lo evita).
+2. Mientras `BLOQUEO_ACTIVO = true`, `index.html` muestra un overlay de cierre con vídeo,
+   countdown hasta `BLOQUEO_HORA_DESBLOQUEO` y un contador de "gente esperando" en vivo
+   (`pingWaiting`, guardado en `CacheService` con ventana de 10 minutos, no en Sheets, porque
+   es un dato efímero).
+3. El admin desactiva el bloqueo desde `admin.html` (`setLockStatus({activo:false, pin})`).
+   **Esto dispara automáticamente la revelación**: todos los navegadores en la pantalla de
+   cierre pasan a un podio en suspense (top 3 animado) seguido de un banner fijo con el
+   nombre del campeón, mensaje generado y confeti. Cada navegador lo reproduce una sola vez
+   (se marca en `localStorage`); si recarga después, solo ve el banner fijo.
+4. Si hace falta retirar la celebración por completo (p. ej. para corregir algo), el admin
+   usa `retirarCierre` — nadie vuelve a ver el popup aunque recargue.
+5. `resetBloqueo()` (solo desde el editor de Apps Script) borra todos los flags, útil para
+   repetir la secuencia en pruebas o en un futuro torneo.
+
+> El PIN de esta sección es el mismo `2901` (`ADMIN_PIN_BLOQUEO`).
+
+---
+
+## 📖 NOVELA DEL MUNDIAL
+
+`novela.html` construye, a partir de `getHistory` (snapshots diarios de `Historico_Ranking`),
+una cronología narrativa por jugador: sube/baja de puestos, entra o sale del podio, pierde o
+gana el liderato, toca fondo en el último puesto, etc. Cada movimiento se categoriza por
+magnitud (subida/bajada pequeña, grande, "mega") y se le asigna una frase humorística sacada
+de un banco de frases por categoría (sin repetir dentro de la misma novela — se consumen de
+una cola barajada). Se accede desde un selector de jugador o directamente vía
+`novela.html?pid=...`.
+
+Un popup promocional en `index.html` (`checkNovelaPromo()`) anuncia la sección la primera vez
+que hay suficiente histórico (al menos 2 días distintos de datos), con enlace directo a "mi
+novela" si el usuario tiene sesión iniciada.
+
+---
+
 ## FUNCIONALIDADES
 
 | Funcionalidad | Dónde |
@@ -285,8 +352,10 @@ Además de los 8 logros automáticos, el admin puede conceder a mano desde `admi
 | 📈 Gráfico evolución del ranking (colapsable) | index.html |
 | 🎯 Simulador "¿Puedo alcanzar a...?" | index.html |
 | 🥊 Duelo del Día (duelos automáticos, fase eliminatoria) | index.html |
+| 🔒 Pantalla de cierre + revelación del campeón (podio + banner) | index.html (jugador) / admin.html (control) |
 | 👤 Perfil público por jugador (incluye historial de duelos) | perfil.html |
 | 🏅 Sistema de logros (8 automáticos + 2 manuales) | perfil.html |
+| 📖 Novela del Mundial (cronología narrativa por jugador) | novela.html |
 | 👁️ Ver picks de todos (tras cierre) | mis-picks.html |
 | 📊 Consenso local/empate/visitante | mis-picks.html |
 | 🎰 Joker (×2 en un partido) | mis-picks.html |
@@ -313,7 +382,7 @@ Además de los 8 logros automáticos, el admin puede conceder a mano desde `admi
 | 🔥 | Hat-Trick de Sofá | 3 exactos en el mismo día |
 | 🤡 | Seleccionador Nacional | 5 partidos seguidos sin acertar el ganador |
 
-### Manuales *(concedidos por admin, ver sección Duelos automáticos / Logros manuales)*
+### Manuales *(concedidos por admin)*
 
 | Icono | Nombre | Condición |
 |---|---|---|
@@ -337,15 +406,19 @@ Además de los 8 logros automáticos, el admin puede conceder a mano desde `admi
 | `getStats` | — | Estadísticas globales |
 | `getMatchLockStatus` | — | Estado de bloqueo de partidos |
 | `getDailyComment` | — | Crónica del día |
-| `getHistory` | `pid` (opcional) | Historial ranking |
+| `getHistory` | `pid` (opcional) | Historial ranking (usado por gráfico y novela) |
 | `getProfile` | `pid` | Perfil completo |
 | `getAchievements` | `pid` | Logros (automáticos + manuales) de un jugador |
 | `getRecentAchievements` | — | Logros conseguidos recientemente (popup de novedades) |
 | `getJoker` | `pid` | Joker activo |
 | `getTopScorers` | — | Goleadores |
-| `getRetos` | `pid` | Retos manuales (activos + historial, fase de grupos) |
+| `getActiveLiveQuestion` | `pid` | Pregunta en vivo activa (si hay alguna lanzada) |
+| `getLiveAnswers` | `qid` | Respuestas/tally de una pregunta en vivo |
+| `getDuelos` | — | Todos los duelos (uso interno/admin) |
 | `getDuelosJugador` | `pid` | Duelos automáticos (activo + historial) de un jugador |
-| `getActiveQuestion` | — | Pregunta en vivo activa (si hay alguna lanzada) |
+| `getRetos` | `pid` | Retos manuales (histórico, fase de grupos) |
+| `getRetosGlobales` | — | Todos los retos manuales (uso interno/admin) |
+| `getLockStatus` | — | Estado del bloqueo final (activo, hora objetivo, gente esperando, si ya se reveló al campeón) |
 
 | POST `action` | Body | Descripción |
 |---|---|---|
@@ -353,75 +426,76 @@ Además de los 8 logros automáticos, el admin puede conceder a mano desde `admi
 | `savePreds` | `{pid, preds}` | Guardar picks |
 | `saveSpecials` | `{pid, campeon, finalista, semi1, semi2, goleador, sorpresa, equipo_estrella}` | Guardar especiales |
 | `saveJoker` | `{pid, mid}` | Activar joker |
-| `crearReto` | `{retadorId, retadorNombre, retadoId, retadoNombre, partidoId}` | Crear reto manual (solo fase de grupos) |
-| `responderReto` | `{retoId, pid, accion}` | Aceptar/rechazar un reto manual |
 | `saveLiveAnswer` | `{qid, pid, respuesta}` | Guardar respuesta a una pregunta en vivo |
-| `createQuestion` *(admin)* | `{pregunta, opciones, puntos, minutos}` | Lanzar pregunta en vivo |
-| `grantLogro` *(admin)* | `{pid, achievementId, pin}` | Conceder logro manual |
+| `createLiveQuestion` *(admin)* | `{partido_id, pregunta, opciones, puntos, minutos}` | Lanzar pregunta en vivo |
+| `resolveLiveQuestion` *(admin)* | `{qid, respuesta_correcta}` | Resolver pregunta y repartir puntos |
+| `deleteLiveQuestion` *(admin)* | `{qid}` | Cancelar pregunta activa |
+| `crearReto` | `{retadorId, retadorNombre, retadoId, retadoNombre, partidoId}` | Crear reto manual (solo se usó en fase de grupos) |
+| `responderReto` | `{retoId, pid, accion}` | Aceptar/rechazar un reto manual |
+| `grantManualAchievement` *(admin)* | `{pid, achievementId, pin}` | Conceder logro manual |
+| `pingWaiting` | `{pid}` | Marca a un jugador como "esperando" en la pantalla de cierre |
+| `setLockStatus` *(admin)* | `{activo, pin}` | Activa/desactiva el bloqueo final — desactivarlo dispara la revelación del campeón |
+| `retirarCierre` *(admin)* | `{pin}` | Retira la celebración del campeón por completo |
 
 ---
 
-## FUNCIONES DE MANTENIMIENTO (Apps Script, ejecución manual)
+## GLOSARIO DE APRENDIZAJES TÉCNICOS
 
-| Función | Uso |
-|---|---|
-| `setup()` | Crea/actualiza todas las hojas necesarias |
-| `setApiKey(key)` | Guarda el token de football-data.org |
-| `testApiConnection()` | Verifica que la API responde |
-| `setupTriggers()` | Configura `syncResults` (5 min) y `generateDailyDuels` (medianoche) |
-| `generateDailyDuels()` | Genera los emparejamientos del día si hay partidos de eliminatoria |
-| `resolveDailyDuels()` | Resuelve los duelos del día cuando terminan todos los partidos |
-| `resetDuelos(fecha)` | Resetea los duelos de una fecha a `pendiente` para poder recalcularlos tras una corrección |
-| `fixDuelosResueltos()` | Recalcula en bloque todos los duelos ya resueltos tras un fix de marcador |
-| `fixMarcadoresEliminatoria()` | Corrección retroactiva de marcadores de eliminatoria (uso puntual, ya ejecutada) |
-
----
-
-## NOTAS TÉCNICAS IMPORTANTES
-
-**CORS en Google Apps Script**
-Todos los POST usan `Content-Type: text/plain;charset=utf-8`. Con `application/json` el navegador hace un preflight OPTIONS que Apps Script no responde, causando "Error de conexión".
-
-**Fechas y zona horaria (Europe/Madrid)**
-Google Sheets auto-parsea strings ISO de fecha/hora a objetos `Date` nativos al guardarlos en una celda. `String(date).slice(0,10)` da un resultado poco fiable (`"Sat Jul 04 2026..."`) y nunca coincide con un `"yyyy-MM-dd"`. Usar siempre el helper `fechaMadrid(raw)`, que hace `instanceof Date` primero y aplica `Utilities.formatDate(d, 'Europe/Madrid', 'yyyy-MM-dd')` tanto si `raw` es un `Date` real como si es un string ISO.
-
-**`calculatePoints()` es la fuente de verdad**
-Los puntos se recalculan desde cero en cada ejecución a partir de predicciones, especiales, joker, duelos y preguntas en vivo. Nunca escribir puntos directamente en `Puntuaciones`: la siguiente ejecución los sobrescribiría.
-
-**Resolución de duelos: "one-shot"**
-Una vez que un duelo tiene `resuelto = true`, queda congelado. Ante una corrección retroactiva de marcador hay que resetear explícitamente el estado a `aceptado` (`resetDuelos()`) antes de recalcular (`resolveDailyDuels()` o `fixDuelosResueltos()`).
-
-**Marcador de 90' vs. resultado final (eliminatorias)**
-`updatePartidos()` usa `score.regularTime` (no `fullTime`) para el marcador que se puntúa, evitando incluir prórroga/penaltis. La columna `ganador_final` guarda por separado quién avanzó realmente a la siguiente ronda. El campo `winner` de football-data.org es inestable justo después de acabar el partido; `regularTime` es estable. El plan gratuito no da resultados en directo durante el partido.
+**Puntuación de eliminatorias**
+La columna `ganador_final` guarda por separado quién avanzó realmente a la siguiente ronda,
+calculada comparando `regularTime` + `extraTime` + `penalties`, no el campo `winner` de la
+API (inestable justo al terminar el partido). `regularTime` es el campo estable para el
+marcador que se puntúa. El plan gratuito no da resultados en directo durante el partido.
 
 **Triggers**
-`setupTriggers()` debe volver a ejecutarse manualmente desde el editor de Apps Script cada vez que se despliega un cambio en `Code.gs` que afecte a la configuración de triggers (no se re-aplica solo con el deploy).
+`setupTriggers()` debe volver a ejecutarse manualmente desde el editor de Apps Script cada vez
+que se despliega un cambio en `Code.gs` que afecte a la configuración de triggers (no se
+re-aplica solo con el deploy). Son tres: `syncResults()` (5 min), `generateDailyDuels()`
+(medianoche) y `checkAutoLock()` (5 min).
 
 **Deployment**
-Siempre "Nueva versión" sobre la implementación existente. Nunca "Nueva implementación" (cambiaría la URL y rompería todos los HTML ya desplegados).
+Siempre "Nueva versión" sobre la implementación existente. Nunca "Nueva implementación"
+(cambiaría la URL y rompería todos los HTML ya desplegados).
 
 **Edición de archivos**
-Empezar siempre desde el archivo fuente original. No parchear un archivo ya parcheado — los parches acumulados corrompen el código.
+Empezar siempre desde el archivo fuente original. No parchear un archivo ya parcheado — los
+parches acumulados corrompen el código.
 
 **FTP — IP directa**
 El dominio `ftp.soydentaria.com` no resuelve. Usar siempre la IP `185.156.219.32`.
 
 **server-dir en deploy.yml**
-El usuario FTP `javierlopez@soydentaria.com` tiene como raíz directamente la carpeta `porra2026`. Por eso `server-dir: /`. Cualquier ruta adicional crea subcarpetas incorrectas.
+El usuario FTP `javierlopez@soydentaria.com` tiene como raíz directamente la carpeta
+`porra2026`. Por eso `server-dir: /`. Cualquier ruta adicional crea subcarpetas incorrectas.
 
 **Sincronización automática**
-`syncResults()` se ejecuta cada 5 minutos. Llama a `updatePartidos()`, `syncScorers()` y `calculateAllPoints()`. El snapshot diario del ranking se guarda una vez por día automáticamente. `generateDailyDuels()` se ejecuta a medianoche (hora Madrid) y solo genera emparejamientos si hay partidos de fase eliminatoria programados ese día.
+`syncResults()` se ejecuta cada 5 minutos. Llama a `updatePartidos()`, `syncScorers()` y
+`calculateAllPoints()`. El snapshot diario del ranking se guarda una vez por día
+automáticamente (fuente de `getHistory`, usado por el gráfico de evolución y por la novela).
+`generateDailyDuels()` se ejecuta a medianoche (hora Madrid) y solo genera emparejamientos si
+hay partidos de fase eliminatoria programados ese día.
+
+**Cierre final**
+Los flags de `PropertiesService` (`BLOQUEO_ACTIVO`, `BLOQUEO_AUTO_DONE`, `PORRA_FINALIZADA`,
+`REVEAL_TRIGGERED_AT`) son deliberadamente independientes de Sheets — son estado efímero de
+singleton, no datos que haya que auditar o cruzar con otras hojas. `resetBloqueo()` los borra
+todos de golpe si hay que repetir la secuencia.
 
 ---
 
-## PENDIENTE / EN EL HORIZONTE
+## ESTADO FINAL DEL PROYECTO
 
-- Verificar que `syncResults` y `getMatches` no filtren accidentalmente los partidos que no son `GROUP_STAGE`.
-- Revisar `reglas.html` por si quedan fechas de cierre desactualizadas.
-- Simulador de puntos mejorado: contexto de todo el torneo, comentarios con humor, botón "¿Puedo ganar?".
+El torneo se completó con todas las fases funcionando según lo diseñado: fase de grupos con
+predicciones y retos manuales, fase eliminatoria con duelos automáticos obligatorios, preguntas
+en vivo durante partidos, logros automáticos y manuales, y el cierre final con revelación del
+campeón. No hay desarrollo activo previsto; esta guía queda como referencia por si se reutiliza
+la base para un futuro torneo.
+
+Ideas que se llegaron a discutir pero no se implementaron, por si sirven de punto de partida:
+- Simulador de puntos mejorado (puntos totales posibles, puntos del día, comentarios con humor).
 - PWA "añadir a pantalla de inicio" (prompt nativo en Android Chrome, banner manual en iOS Safari) — explorado a nivel de arquitectura, no implementado.
-- Player of the Match: descartado por ahora, football-data.org free tier no expone ese dato.
+- Player of the Match: descartado, football-data.org free tier no expone ese dato.
 
 ---
 
-*Porra Mundial 2026 v3.0 · Resultados vía football-data.org (free tier)*
+*Porra Mundial 2026 v4.0 (final) · Resultados vía football-data.org (free tier)*
